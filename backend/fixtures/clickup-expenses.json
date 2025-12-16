@@ -1,0 +1,11 @@
+{
+  "tasks": [
+    {
+      "id": "exp1",
+      "custom_fields": [
+        { "id": "278accbb-c4a3-430f-ae3b-6076f96222b3", "value": 1764550000000 },
+        { "id": "0d357de4-bb80-4a61-a83d-3b373e102904", "value": 118 }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,20 @@
+{
+  "tasks": [
+    {
+      "id": "event1",
+      "status": { "status": "booked" },
+      "date_updated": "1764635000000",
+      "custom_fields": [
+        { "id": "1660701a-1263-41cf-bb7a-79e3c3638aa3", "value": 1767225600000 }
+      ]
+    },
+    {
+      "id": "event2",
+      "status": { "status": "Cancelled" },
+      "date_updated": "1764635000000",
+      "custom_fields": [
+        { "id": "1660701a-1263-41cf-bb7a-79e3c3638aa3", "value": 1764806400000 }
+      ]
+    }
+  ]
+}

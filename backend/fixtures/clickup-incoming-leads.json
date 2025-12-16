@@ -1,0 +1,39 @@
+{
+  "tasks": [
+    {
+      "id": "lead1",
+      "status": { "status": "Closed Won" },
+      "date_created": "1764460800000",
+      "date_updated": "1764806400000",
+      "date_closed": "1764806400000",
+      "custom_fields": [
+        { "id": "b9781217-a9fc-44e1-b152-c11f193c8839", "value": "+972-54-123-4567" },
+        { "id": "c49330f0-35a0-4177-92ff-854655a7fc55", "value": "Landing Page" },
+        { "id": "09a72b8e-b74a-4034-8aff-f1b683c51650", "value": 1180 },
+        { "id": "05c2f19f-8a46-41ab-8720-0ce2481c29cc", "value": 200 },
+        { "id": "1660701a-1263-41cf-bb7a-79e3c3638aa3", "value": 1764806400000 }
+      ]
+    },
+    {
+      "id": "lead2",
+      "status": { "status": "Closed Loss" },
+      "date_created": "1764550000000",
+      "date_updated": "1764555000000",
+      "custom_fields": [
+        { "id": "b9781217-a9fc-44e1-b152-c11f193c8839", "value": "0541234567" },
+        { "id": "c49330f0-35a0-4177-92ff-854655a7fc55", "value": "Landing Page" },
+        { "id": "c4c93671-a537-471b-80ae-0790d1fc2e84", "value": "Not Relevant" }
+      ]
+    },
+    {
+      "id": "lead3",
+      "status": { "status": "New Lead" },
+      "date_created": "1764630000000",
+      "date_updated": "1764635000000",
+      "custom_fields": [
+        { "id": "b9781217-a9fc-44e1-b152-c11f193c8839", "value": "0549999999" },
+        { "id": "c49330f0-35a0-4177-92ff-854655a7fc55", "value": "Word of Mouth" }
+      ]
+    }
+  ]
+}

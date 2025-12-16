@@ -9,6 +9,15 @@
     "build": "tsc -p electron && vite build",
     "preview": "vite preview",
     "typecheck": "tsc -p tsconfig.json --noEmit",
+    "f1:build": "tsc -p backend/tsconfig.json",
+    "f1:run:mock": "node dist-backend/run/run-mock.js",
+    "f1:run:live": "node dist-backend/run/run-live.js",
+    "f1:run:mock:build": "npm run f1:build && npm run f1:run:mock",
+    "f1:run:live:build": "npm run f1:build && npm run f1:run:live",
+    "f1:assert": "node dist-backend/run/assert-mock-output.js",
+    "f1:assert:build": "npm run f1:build && npm run f1:assert",
+    "f1:assert:update": "node dist-backend/run/assert-mock-output.js --update",
+    "f1:assert:update:build": "npm run f1:build && npm run f1:assert:update",
     "lint": "echo 'lint not configured'"
   },
   "dependencies": {
@@ -18,6 +27,7 @@
     "react-router-dom": "^6.28.0"
   },
   "devDependencies": {
+    "@types/node": "^22.10.2",
     "@types/react": "^18.3.12",
     "@types/react-dom": "^18.3.1",
     "@vitejs/plugin-react": "^4.3.3",

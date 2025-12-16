@@ -7,6 +7,9 @@ node_modules/
 # Electron compiled output
 /dist-electron/
 
+# Backend compiled output
+/dist-backend/
+
 # Local env
 .env
 

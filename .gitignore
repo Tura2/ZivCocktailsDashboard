@@ -1,0 +1,14 @@
+node_modules/
+.DS_Store
+
+# Vite
+/dist-renderer/
+
+# Electron compiled output
+/dist-electron/
+
+# Local env
+.env
+
+# Firebase
+.firebase/

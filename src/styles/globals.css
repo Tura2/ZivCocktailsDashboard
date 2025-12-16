@@ -1,0 +1,21 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --auth-bg: #f8fafc;
+  --auth-surface: #ffffff;
+  --auth-text-strong: #111827;
+  --auth-text-muted: #6b7280;
+  --auth-stroke: rgba(17, 24, 39, 0.12);
+  --auth-link: #3a5b22;
+}
+
+html,
+body {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+}

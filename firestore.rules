@@ -3,18 +3,20 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
+    // Helper: user must be logged in AND their email must be in access/allowlist.emails
     function isAllowed() {
       return request.auth != null
         && request.auth.token.email != null
-        && exists(/databases/$(database)/documents/access/allowlist)
         && request.auth.token.email in get(/databases/$(database)/documents/access/allowlist).data.emails;
     }
 
+    // Access doc itself: read allowed users can read it; writes locked (admin via server only)
     match /access/{docId} {
       allow read: if isAllowed();
       allow write: if false;
     }
 
+    // Dashboard & snapshots are read-only from the client app
     match /dashboard/{docId} {
       allow read: if isAllowed();
       allow write: if false;
@@ -30,6 +32,7 @@ service cloud.firestore {
       allow write: if false;
     }
 
+    // Default deny
     match /{document=**} {
       allow read, write: if false;
     }

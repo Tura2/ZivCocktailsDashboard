@@ -1,0 +1,25 @@
+{
+  "name": "ziv-cocktails-dashboard-functions",
+  "private": true,
+  "version": "0.0.1",
+  "main": "lib/index.js",
+  "type": "commonjs",
+  "engines": {
+    "node": "20"
+  },
+  "scripts": {
+    "build": "node scripts/copy-engine.js && tsc -p tsconfig.json",
+    "build:engine": "node scripts/copy-engine.js",
+    "serve": "firebase emulators:start --only functions,firestore,auth",
+    "shell": "firebase functions:shell",
+    "lint": "echo 'lint not configured'"
+  },
+  "dependencies": {
+    "firebase-admin": "^12.7.0",
+    "firebase-functions": "^4.9.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.2",
+    "typescript": "^5.6.3"
+  }
+}

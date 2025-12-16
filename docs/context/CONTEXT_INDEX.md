@@ -39,5 +39,5 @@ This repository uses a small set of Markdown docs as the “source of truth” f
 - The desktop app is UI-only; compute happens in cloud jobs.
 - Electron client must never hold API secrets.
 - Firestore stores computed outputs only (latest + snapshots), not raw ClickUp/Instagram records.
-- Firestore reads require allowlisted email (`access/allowlist.emails`).
+- Firestore reads require allowlisted email (`access/allowlist` field `emails`).
 - Snapshots are immutable and represent the full previous calendar month only.

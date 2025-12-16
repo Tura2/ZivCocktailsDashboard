@@ -16,4 +16,4 @@ Electron + React (Vite) desktop dashboard for Ziv Cocktails.
 - No ClickUp/Instagram API secrets in Electron/renderer.
 - Electron is read-only to business systems.
 - Firestore stores computed results only.
-- Access is restricted via `access/allowlist.emails` (see [firestore.rules](firestore.rules)).
+- Access is restricted via `access/allowlist` (field `emails`) (see [firestore.rules](firestore.rules)).

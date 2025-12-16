@@ -15,3 +15,8 @@ node_modules/
 
 # Firebase
 .firebase/
+
+# Cloud Functions
+/functions/node_modules/
+/functions/lib/
+/functions/engine/

@@ -1,0 +1,752 @@
+[
+  {
+    "computedAt": "2025-12-16T12:00:00.000Z",
+    "diffFromPreviousPct": {
+      "financial": {
+        "expectedCashflow": {
+          "grossPct": null,
+          "netPct": null
+        },
+        "expectedExpenses": {
+          "grossPct": null,
+          "netPct": null
+        },
+        "monthlyRevenue": {
+          "grossPct": null,
+          "netPct": null
+        }
+      },
+      "marketing": {
+        "followersDeltaMonth": {
+          "valuePct": null
+        },
+        "followersEndOfMonth": {
+          "valuePct": null
+        },
+        "landingConversionPct": {
+          "valuePct": null
+        },
+        "landingSignups": {
+          "valuePct": null
+        },
+        "landingVisits": {
+          "valuePct": null
+        },
+        "relevantLeads": {
+          "valuePct": null
+        },
+        "totalLeads": {
+          "valuePct": null
+        }
+      },
+      "operations": {
+        "activeCustomers": {
+          "valuePct": null
+        },
+        "cancellations": {
+          "valuePct": null
+        },
+        "referralsWordOfMouth": {
+          "valuePct": null
+        },
+        "returningCustomers": {
+          "valuePct": null
+        }
+      },
+      "sales": {
+        "avgRevenuePerDeal": {
+          "grossPct": null,
+          "netPct": null
+        },
+        "closeRatePct": {
+          "valuePct": null
+        },
+        "closures": {
+          "valuePct": null
+        },
+        "salesCalls": {
+          "valuePct": null
+        }
+      }
+    },
+    "metrics": {
+      "computedAt": "2025-12-16T12:00:00.000Z",
+      "financial": {
+        "expectedCashflow": {
+          "grossILS": null,
+          "meta": {
+            "notes": [
+              "Uses requestedDate as event date proxy",
+              "Uses Paid Amount as deposit (gross ILS)",
+              "Uses closeDate (date_closed/date_updated) as deposit date proxy",
+              "Budget treated as gross ILS; net computed with VAT 18%"
+            ],
+            "source": "clickup"
+          },
+          "netILS": null
+        },
+        "expectedExpenses": {
+          "grossILS": null,
+          "meta": {
+            "notes": [
+              "Expense Amount treated as gross ILS; net computed with VAT 18%"
+            ],
+            "source": "clickup"
+          },
+          "netILS": null
+        },
+        "monthlyRevenue": {
+          "grossILS": null,
+          "meta": {
+            "notes": [
+              "Budget treated as gross ILS; net computed with VAT 18%"
+            ],
+            "source": "clickup"
+          },
+          "netILS": null
+        }
+      },
+      "marketing": {
+        "followersDeltaMonth": {
+          "meta": {
+            "notes": [
+              "Followers metrics supported only for current + previous month (insights window)"
+            ],
+            "source": "instagram"
+          },
+          "value": null
+        },
+        "followersEndOfMonth": {
+          "meta": {
+            "notes": [
+              "Followers metrics supported only for current + previous month (insights window)"
+            ],
+            "source": "instagram"
+          },
+          "value": null
+        },
+        "landingConversionPct": {
+          "meta": {
+            "notes": [
+              "visits == 0 => null"
+            ],
+            "source": "computed"
+          },
+          "value": null
+        },
+        "landingSignups": {
+          "meta": {
+            "notes": [
+              "v1: same as landingVisits (ClickUp is authoritative)"
+            ],
+            "source": "clickup"
+          },
+          "value": 0
+        },
+        "landingVisits": {
+          "meta": {
+            "notes": [
+              "ClickUp proxy: Source = Landing Page"
+            ],
+            "source": "clickup"
+          },
+          "value": 0
+        },
+        "relevantLeads": {
+          "meta": {
+            "notes": [
+              "totalLeads minus Closed Loss with Loss Reason = Not Relevant"
+            ],
+            "source": "clickup"
+          },
+          "value": 0
+        },
+        "totalLeads": {
+          "meta": {
+            "notes": [
+              "Count of Incoming Leads tasks created in month"
+            ],
+            "source": "clickup"
+          },
+          "value": 0
+        }
+      },
+      "month": "2025-10",
+      "operations": {
+        "activeCustomers": {
+          "meta": {
+            "notes": [
+              "Event Calendar: statuses {booked, staffing, logistics, ready} and eventDate >= computedAt"
+            ],
+            "source": "clickup"
+          },
+          "value": 1
+        },
+        "cancellations": {
+          "meta": {
+            "notes": [
+              "v1: status == Cancelled and date_updated in month"
+            ],
+            "source": "clickup"
+          },
+          "value": 0
+        },
+        "referralsWordOfMouth": {
+          "meta": {
+            "notes": [
+              "Incoming Leads: Source = Word of Mouth, created in month"
+            ],
+            "source": "clickup"
+          },
+          "value": 0
+        },
+        "returningCustomers": {
+          "meta": {
+            "notes": [
+              "Unique normalized phones created in month that match historical Closed Won phones"
+            ],
+            "source": "clickup"
+          },
+          "value": 0
+        }
+      },
+      "sales": {
+        "avgRevenuePerDeal": {
+          "grossILS": null,
+          "meta": {
+            "notes": [
+              "closedWonCount == 0 => null"
+            ],
+            "source": "computed"
+          },
+          "netILS": null
+        },
+        "closeRatePct": {
+          "meta": {
+            "notes": [
+              "salesCalls == 0 => null"
+            ],
+            "source": "computed"
+          },
+          "value": null
+        },
+        "closures": {
+          "meta": {
+            "notes": [
+              "Closed Won deals with closeDate in month"
+            ],
+            "source": "clickup"
+          },
+          "value": 0
+        },
+        "salesCalls": {
+          "meta": {
+            "notes": [
+              "Leads created in month where status != New Lead"
+            ],
+            "source": "clickup"
+          },
+          "value": 0
+        }
+      },
+      "version": "v1"
+    },
+    "month": "2025-10",
+    "version": "v1"
+  },
+  {
+    "computedAt": "2025-12-16T12:00:00.000Z",
+    "diffFromPreviousPct": {
+      "financial": {
+        "expectedCashflow": {
+          "grossPct": null,
+          "netPct": null
+        },
+        "expectedExpenses": {
+          "grossPct": null,
+          "netPct": null
+        },
+        "monthlyRevenue": {
+          "grossPct": null,
+          "netPct": null
+        }
+      },
+      "marketing": {
+        "followersDeltaMonth": {
+          "valuePct": null
+        },
+        "followersEndOfMonth": {
+          "valuePct": null
+        },
+        "landingConversionPct": {
+          "valuePct": null
+        },
+        "landingSignups": {
+          "valuePct": null
+        },
+        "landingVisits": {
+          "valuePct": null
+        },
+        "relevantLeads": {
+          "valuePct": null
+        },
+        "totalLeads": {
+          "valuePct": null
+        }
+      },
+      "operations": {
+        "activeCustomers": {
+          "valuePct": 0
+        },
+        "cancellations": {
+          "valuePct": null
+        },
+        "referralsWordOfMouth": {
+          "valuePct": null
+        },
+        "returningCustomers": {
+          "valuePct": null
+        }
+      },
+      "sales": {
+        "avgRevenuePerDeal": {
+          "grossPct": null,
+          "netPct": null
+        },
+        "closeRatePct": {
+          "valuePct": null
+        },
+        "closures": {
+          "valuePct": null
+        },
+        "salesCalls": {
+          "valuePct": null
+        }
+      }
+    },
+    "metrics": {
+      "computedAt": "2025-12-16T12:00:00.000Z",
+      "financial": {
+        "expectedCashflow": {
+          "grossILS": null,
+          "meta": {
+            "notes": [
+              "Uses requestedDate as event date proxy",
+              "Uses Paid Amount as deposit (gross ILS)",
+              "Uses closeDate (date_closed/date_updated) as deposit date proxy",
+              "Budget treated as gross ILS; net computed with VAT 18%"
+            ],
+            "source": "clickup"
+          },
+          "netILS": null
+        },
+        "expectedExpenses": {
+          "grossILS": null,
+          "meta": {
+            "notes": [
+              "Expense Amount treated as gross ILS; net computed with VAT 18%"
+            ],
+            "source": "clickup"
+          },
+          "netILS": null
+        },
+        "monthlyRevenue": {
+          "grossILS": null,
+          "meta": {
+            "notes": [
+              "Budget treated as gross ILS; net computed with VAT 18%"
+            ],
+            "source": "clickup"
+          },
+          "netILS": null
+        }
+      },
+      "marketing": {
+        "followersDeltaMonth": {
+          "meta": {
+            "notes": [
+              "Delta for previous month requires month-2, outside supported window"
+            ],
+            "source": "instagram"
+          },
+          "value": null
+        },
+        "followersEndOfMonth": {
+          "meta": {
+            "notes": [
+              "Delta for previous month requires month-2, outside supported window"
+            ],
+            "source": "instagram"
+          },
+          "value": 1000
+        },
+        "landingConversionPct": {
+          "meta": {
+            "notes": [
+              "v1: landingSignups equals landingVisits"
+            ],
+            "source": "computed"
+          },
+          "value": 100
+        },
+        "landingSignups": {
+          "meta": {
+            "notes": [
+              "v1: same as landingVisits (ClickUp is authoritative)"
+            ],
+            "source": "clickup"
+          },
+          "value": 1
+        },
+        "landingVisits": {
+          "meta": {
+            "notes": [
+              "ClickUp proxy: Source = Landing Page"
+            ],
+            "source": "clickup"
+          },
+          "value": 1
+        },
+        "relevantLeads": {
+          "meta": {
+            "notes": [
+              "totalLeads minus Closed Loss with Loss Reason = Not Relevant"
+            ],
+            "source": "clickup"
+          },
+          "value": 1
+        },
+        "totalLeads": {
+          "meta": {
+            "notes": [
+              "Count of Incoming Leads tasks created in month"
+            ],
+            "source": "clickup"
+          },
+          "value": 1
+        }
+      },
+      "month": "2025-11",
+      "operations": {
+        "activeCustomers": {
+          "meta": {
+            "notes": [
+              "Event Calendar: statuses {booked, staffing, logistics, ready} and eventDate >= computedAt"
+            ],
+            "source": "clickup"
+          },
+          "value": 1
+        },
+        "cancellations": {
+          "meta": {
+            "notes": [
+              "v1: status == Cancelled and date_updated in month"
+            ],
+            "source": "clickup"
+          },
+          "value": 0
+        },
+        "referralsWordOfMouth": {
+          "meta": {
+            "notes": [
+              "Incoming Leads: Source = Word of Mouth, created in month"
+            ],
+            "source": "clickup"
+          },
+          "value": 0
+        },
+        "returningCustomers": {
+          "meta": {
+            "notes": [
+              "Unique normalized phones created in month that match historical Closed Won phones"
+            ],
+            "source": "clickup"
+          },
+          "value": 0
+        }
+      },
+      "sales": {
+        "avgRevenuePerDeal": {
+          "grossILS": null,
+          "meta": {
+            "notes": [
+              "closedWonCount == 0 => null"
+            ],
+            "source": "computed"
+          },
+          "netILS": null
+        },
+        "closeRatePct": {
+          "meta": {
+            "source": "computed"
+          },
+          "value": 0
+        },
+        "closures": {
+          "meta": {
+            "notes": [
+              "Closed Won deals with closeDate in month"
+            ],
+            "source": "clickup"
+          },
+          "value": 0
+        },
+        "salesCalls": {
+          "meta": {
+            "notes": [
+              "Leads created in month where status != New Lead"
+            ],
+            "source": "clickup"
+          },
+          "value": 1
+        }
+      },
+      "version": "v1"
+    },
+    "month": "2025-11",
+    "version": "v1"
+  },
+  {
+    "computedAt": "2025-12-16T12:00:00.000Z",
+    "diffFromPreviousPct": {
+      "financial": {
+        "expectedCashflow": {
+          "grossPct": null,
+          "netPct": null
+        },
+        "expectedExpenses": {
+          "grossPct": null,
+          "netPct": null
+        },
+        "monthlyRevenue": {
+          "grossPct": null,
+          "netPct": null
+        }
+      },
+      "marketing": {
+        "followersDeltaMonth": {
+          "valuePct": null
+        },
+        "followersEndOfMonth": {
+          "valuePct": 2
+        },
+        "landingConversionPct": {
+          "valuePct": 0
+        },
+        "landingSignups": {
+          "valuePct": 0
+        },
+        "landingVisits": {
+          "valuePct": 0
+        },
+        "relevantLeads": {
+          "valuePct": 0
+        },
+        "totalLeads": {
+          "valuePct": 100
+        }
+      },
+      "operations": {
+        "activeCustomers": {
+          "valuePct": 0
+        },
+        "cancellations": {
+          "valuePct": null
+        },
+        "referralsWordOfMouth": {
+          "valuePct": null
+        },
+        "returningCustomers": {
+          "valuePct": null
+        }
+      },
+      "sales": {
+        "avgRevenuePerDeal": {
+          "grossPct": null,
+          "netPct": null
+        },
+        "closeRatePct": {
+          "valuePct": null
+        },
+        "closures": {
+          "valuePct": null
+        },
+        "salesCalls": {
+          "valuePct": 0
+        }
+      }
+    },
+    "metrics": {
+      "computedAt": "2025-12-16T12:00:00.000Z",
+      "financial": {
+        "expectedCashflow": {
+          "grossILS": 1180,
+          "meta": {
+            "notes": [
+              "Uses requestedDate as event date proxy",
+              "Uses Paid Amount as deposit (gross ILS)",
+              "Uses closeDate (date_closed/date_updated) as deposit date proxy",
+              "Budget treated as gross ILS; net computed with VAT 18%"
+            ],
+            "source": "clickup"
+          },
+          "netILS": 1000
+        },
+        "expectedExpenses": {
+          "grossILS": 118,
+          "meta": {
+            "notes": [
+              "Expense Amount treated as gross ILS; net computed with VAT 18%"
+            ],
+            "source": "clickup"
+          },
+          "netILS": 100
+        },
+        "monthlyRevenue": {
+          "grossILS": 1180,
+          "meta": {
+            "notes": [
+              "Budget treated as gross ILS; net computed with VAT 18%"
+            ],
+            "source": "clickup"
+          },
+          "netILS": 1000
+        }
+      },
+      "marketing": {
+        "followersDeltaMonth": {
+          "meta": {
+            "source": "instagram"
+          },
+          "value": 20
+        },
+        "followersEndOfMonth": {
+          "meta": {
+            "source": "instagram"
+          },
+          "value": 1020
+        },
+        "landingConversionPct": {
+          "meta": {
+            "notes": [
+              "v1: landingSignups equals landingVisits"
+            ],
+            "source": "computed"
+          },
+          "value": 100
+        },
+        "landingSignups": {
+          "meta": {
+            "notes": [
+              "v1: same as landingVisits (ClickUp is authoritative)"
+            ],
+            "source": "clickup"
+          },
+          "value": 1
+        },
+        "landingVisits": {
+          "meta": {
+            "notes": [
+              "ClickUp proxy: Source = Landing Page"
+            ],
+            "source": "clickup"
+          },
+          "value": 1
+        },
+        "relevantLeads": {
+          "meta": {
+            "notes": [
+              "totalLeads minus Closed Loss with Loss Reason = Not Relevant"
+            ],
+            "source": "clickup"
+          },
+          "value": 1
+        },
+        "totalLeads": {
+          "meta": {
+            "notes": [
+              "Count of Incoming Leads tasks created in month"
+            ],
+            "source": "clickup"
+          },
+          "value": 2
+        }
+      },
+      "month": "2025-12",
+      "operations": {
+        "activeCustomers": {
+          "meta": {
+            "notes": [
+              "Event Calendar: statuses {booked, staffing, logistics, ready} and eventDate >= computedAt"
+            ],
+            "source": "clickup"
+          },
+          "value": 1
+        },
+        "cancellations": {
+          "meta": {
+            "notes": [
+              "v1: status == Cancelled and date_updated in month"
+            ],
+            "source": "clickup"
+          },
+          "value": 1
+        },
+        "referralsWordOfMouth": {
+          "meta": {
+            "notes": [
+              "Incoming Leads: Source = Word of Mouth, created in month"
+            ],
+            "source": "clickup"
+          },
+          "value": 1
+        },
+        "returningCustomers": {
+          "meta": {
+            "notes": [
+              "Unique normalized phones created in month that match historical Closed Won phones"
+            ],
+            "source": "clickup"
+          },
+          "value": 0
+        }
+      },
+      "sales": {
+        "avgRevenuePerDeal": {
+          "grossILS": 1180,
+          "meta": {
+            "source": "computed"
+          },
+          "netILS": 1000
+        },
+        "closeRatePct": {
+          "meta": {
+            "source": "computed"
+          },
+          "value": 100
+        },
+        "closures": {
+          "meta": {
+            "notes": [
+              "Closed Won deals with closeDate in month"
+            ],
+            "source": "clickup"
+          },
+          "value": 1
+        },
+        "salesCalls": {
+          "meta": {
+            "notes": [
+              "Leads created in month where status != New Lead"
+            ],
+            "source": "clickup"
+          },
+          "value": 1
+        }
+      },
+      "version": "v1"
+    },
+    "month": "2025-12",
+    "version": "v1"
+  }
+]

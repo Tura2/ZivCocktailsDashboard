@@ -20,6 +20,15 @@ Constraints (F1):
 - Run live (uses env vars):
 	- PowerShell: `$env:F1_MONTH="2025-12"; npm run f1:run:live:build`
 
+## F2 — Snapshots (mock)
+
+- Generate snapshot records (mock):
+	- PowerShell: `$env:F2_MONTHS="2025-10,2025-11,2025-12"; npm run f2:run:mock:build`
+- Assert snapshot output matches committed expected JSON:
+	- PowerShell: `$env:F2_MONTHS="2025-10,2025-11,2025-12"; npm run f2:assert:build`
+- Update expected JSON intentionally:
+	- PowerShell: `$env:F2_MONTHS="2025-10,2025-11,2025-12"; npm run f2:assert:update:build`
+
 ## Required env vars (live)
 
 - `CLICKUP_API_TOKEN`

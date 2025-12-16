@@ -31,6 +31,8 @@ This repository uses a small set of Markdown docs as the “source of truth” f
 ## Current baseline
 
 - Foundation status (what’s already implemented): [F0_FOUNDATION.md](F0_FOUNDATION.md)
+- F1 compute engine (backend-only): [F1_CLOUD_DATA_ENGINE.md](F1_CLOUD_DATA_ENGINE.md)
+- F2 snapshot engine (backend-only, no persistence yet): [F2_SNAPSHOT_ENGINE.md](F2_SNAPSHOT_ENGINE.md)
 
 ## Ground rules (quick)
 

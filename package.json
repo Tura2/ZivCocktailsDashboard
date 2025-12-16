@@ -18,6 +18,14 @@
     "f1:assert:build": "npm run f1:build && npm run f1:assert",
     "f1:assert:update": "node dist-backend/run/assert-mock-output.js --update",
     "f1:assert:update:build": "npm run f1:build && npm run f1:assert:update",
+
+    "f2:run:mock": "node dist-backend/run/run-snapshots-mock.js",
+    "f2:run:mock:build": "npm run f1:build && npm run f2:run:mock",
+    "f2:assert": "node dist-backend/run/assert-snapshots-mock.js",
+    "f2:assert:build": "npm run f1:build && npm run f2:assert",
+    "f2:assert:update": "node dist-backend/run/assert-snapshots-mock.js --update",
+    "f2:assert:update:build": "npm run f1:build && npm run f2:assert:update",
+
     "lint": "echo 'lint not configured'"
   },
   "dependencies": {

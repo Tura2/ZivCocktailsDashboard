@@ -1,5 +1,5 @@
 import type { Request } from 'express';
-import { admin, getDb } from './firebaseAdmin';
+import { admin, getAdminApp, getDb } from './firebaseAdmin';
 import { HttpError } from './errors';
 
 export interface AuthedCaller {
@@ -24,10 +24,15 @@ function readDevEmail(req: Request): string | null {
 }
 
 function readBearerToken(req: Request): string | null {
-  const h = req.header('Authorization') || req.header('authorization');
+  const h = req.header('authorization');
   if (!h) return null;
-  const m = /^Bearer\s+(.+)$/.exec(h);
-  return m ? m[1] : null;
+
+  // Robust Bearer parsing: trim + case-insensitive regex.
+  // Accepts: "Bearer <token>" or "bearer   <token>".
+  const m = /^\s*bearer\s+(.+?)\s*$/i.exec(h);
+  if (!m) return null;
+  const token = m[1].trim();
+  return token ? token : null;
 }
 
 export async function requireAllowlistedCaller(req: Request): Promise<AuthedCaller> {
@@ -48,6 +53,8 @@ export async function requireAllowlistedCaller(req: Request): Promise<AuthedCall
 
     let decoded: admin.auth.DecodedIdToken;
     try {
+      // Ensure the default Firebase Admin app exists before using admin.auth().
+      getAdminApp();
       decoded = await admin.auth().verifyIdToken(token);
     } catch {
       throw new HttpError(401, 'Invalid or expired ID token', 'invalid_token');

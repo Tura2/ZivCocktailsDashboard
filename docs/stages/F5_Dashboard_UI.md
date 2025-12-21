@@ -44,10 +44,16 @@ F5 delivers the **main dashboard UI** backed by Firestore:
 ### Refresh
 
 - User clicks **Refresh**.
-- The app calls the existing HTTPS function `refresh` with an `Authorization: Bearer <ID_TOKEN>` header.
+- The app calls the deployed HTTPS function `refresh` with an `Authorization: Bearer <ID_TOKEN>` header.
+- The endpoint is configured by `VITE_REFRESH_URL` (prefer the stable `cloudfunctions.net/refresh` URL).
 - UI shows "Refreshing…" while the request is in-flight.
 - If the request succeeds, UI shows a success message with the job id.
 - When the backend writes a new `dashboard/latest`, the subscribed UI updates automatically.
+
+Notes (CORS):
+
+- Because the request uses `Authorization` and JSON, the browser/Electron renderer sends an `OPTIONS` preflight.
+- The server-side `refresh` function must return correct CORS headers for both `OPTIONS` and `POST`.
 
 ---
 
@@ -72,7 +78,8 @@ F5 delivers the **main dashboard UI** backed by Firestore:
 **Refresh call**
 
 - [src/lib/api/refresh.ts](../../src/lib/api/refresh.ts)
-  - Calls Cloud Functions HTTPS endpoint using Firebase ID token.
+  - Calls `VITE_REFRESH_URL` using Firebase ID token.
+  - Example: `VITE_REFRESH_URL=https://me-west1-<firebaseProjectId>.cloudfunctions.net/refresh`
 
 ---
 
@@ -131,6 +138,16 @@ No snapshot trend logic is introduced in F5.
 - [ ] Click **Refresh**.
 - [ ] Verify the request returns success (UI shows job id), or a clear error.
 - [ ] After backend completes, verify `dashboard/latest` updates and UI updates without reload.
+
+### How to validate (CORS + runtime)
+
+- [ ] DevTools → Network shows an `OPTIONS` request to refresh returning `204`.
+- [ ] `OPTIONS` response headers include:
+  - [ ] `Access-Control-Allow-Origin: http://localhost:5173`
+  - [ ] `Access-Control-Allow-Methods` includes `POST` and `OPTIONS`
+  - [ ] `Access-Control-Allow-Headers` includes `Authorization`, `Content-Type`, `x-dev-email`
+- [ ] DevTools → Network then shows a `POST` request returning `200` (or a JSON auth error such as `401/403`, but not a CORS error).
+- [ ] Backend logs show both `OPTIONS /refresh` and `POST /refresh`.
 
 ---
 

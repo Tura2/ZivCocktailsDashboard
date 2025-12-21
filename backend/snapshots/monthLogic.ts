@@ -33,8 +33,7 @@ export function compareMonths(a: YYYYMM, b: YYYYMM): number {
 export function getTargetSnapshotMonth(now: Date): YYYYMM {
   const y = now.getUTCFullYear();
   const m0 = now.getUTCMonth();
-  const prev = new Date(Date.UTC(y, m0 - 1, 1, 0, 0, 0, 0));
-  return formatYYYYMM(prev.getUTCFullYear(), prev.getUTCMonth());
+  return formatYYYYMM(y, m0);
 }
 
 export function listMonthsInclusive(from: YYYYMM, to: YYYYMM): YYYYMM[] {

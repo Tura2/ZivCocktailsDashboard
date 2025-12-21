@@ -1,5 +1,8 @@
 {
   "projects": {
-    "default": "zivcocktailsdashboard"
-  }
+    "default": "zivcocktailsdashboard",
+    "functions": "zivcocktailsdashboard"
+  },
+  "targets": {},
+  "etags": {}
 }

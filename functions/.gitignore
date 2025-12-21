@@ -8,3 +8,8 @@ typings/
 # Node.js dependency directory
 node_modules/
 *.local
+
+# Local env (also ignored from repo root)
+.env
+.env.*
+!.env.example

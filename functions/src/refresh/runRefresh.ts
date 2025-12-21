@@ -2,6 +2,7 @@ import { getDb } from './firebaseAdmin';
 import { assertMonth } from './monthValidation';
 import fs from 'node:fs';
 import path from 'node:path';
+import { CLICKUP_API_TOKEN, INSTAGRAM_ACCESS_TOKEN, INSTAGRAM_IG_USER_ID } from '../config/secrets';
 
 // Engine imports (copied from repo-root dist/engine into functions/engine during build)
 // eslint-disable-next-line @typescript-eslint/no-var-requires
@@ -93,12 +94,6 @@ function mockComputedAt(): Date {
   return new Date('2025-12-16T12:00:00.000Z');
 }
 
-function env(name: string): string {
-  const v = process.env[name];
-  if (!v) throw new Error(`Missing env var ${name}`);
-  return v;
-}
-
 async function getLastSnapshotMonth(): Promise<string | null> {
   const snap = await getDb().collection('snapshots').orderBy('month', 'desc').limit(1).get();
   const doc = snap.docs[0];
@@ -133,13 +128,13 @@ export async function runRefresh(input: RunRefreshInput): Promise<RunRefreshResu
   // ClickUp + Instagram deps for compute engine
   const clickup = emulatorMode
     ? createMockClickUpClient()
-    : new engineClickUpHttp.ClickUpHttpClient({ apiToken: env('CLICKUP_API_TOKEN') });
+    : new engineClickUpHttp.ClickUpHttpClient({ apiToken: CLICKUP_API_TOKEN.value() });
 
   const instagram = emulatorMode
     ? createMockInstagramClient()
     : (() => {
-        const igToken = process.env.INSTAGRAM_ACCESS_TOKEN;
-        const igUserId = process.env.INSTAGRAM_IG_USER_ID;
+        const igToken = INSTAGRAM_ACCESS_TOKEN.value();
+        const igUserId = INSTAGRAM_IG_USER_ID.value();
         return igToken && igUserId ? new engineInstagram.InstagramGraphClient({ accessToken: igToken, igUserId }) : undefined;
       })();
 

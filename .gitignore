@@ -5,9 +5,25 @@ dist/
 
 # Local env
 .env
+.env.*
+!.env.example
+
+# Other common env/secrets
+.envrc
+.envrc.*
+
+# Common credential file names (should never be committed)
+serviceAccount*.json
+*service-account*.json
+firebase-adminsdk*.json
+google-credentials.json
+gcp-credentials.json
 
 # Firebase
 .firebase/
+firebase-debug.log
+firestore-debug.log
+ui-debug.log
 
 # Cloud Functions
 /functions/node_modules/

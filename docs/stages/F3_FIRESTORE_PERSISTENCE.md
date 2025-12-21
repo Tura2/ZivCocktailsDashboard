@@ -93,6 +93,38 @@ Related docs:
   - `409` if another refresh is already running
   - `401/403` for auth/allowlist failures
 
+### Deployed URL (Gen2)
+
+Prefer calling the stable Functions URL (this is what `VITE_REFRESH_URL` should point to):
+
+- `https://me-west1-<firebaseProjectId>.cloudfunctions.net/refresh`
+
+Firebase deploy output will also show a Cloud Run service URL (`https://refresh-<hash>.a.run.app`). Avoid hard-coding that in docs/config unless you have a specific reason.
+
+### CORS (browser/Electron renderer)
+
+Problem summary:
+
+- Browser/Electron renderer requests were blocked because the `OPTIONS` preflight did not receive valid CORS headers.
+
+Root cause:
+
+- The request uses `Authorization: Bearer <Firebase ID token>` and `Content-Type: application/json`, which triggers an `OPTIONS` preflight.
+- Cloud Functions v2 HTTP handlers do not automatically handle CORS/preflight; the function must return CORS headers for both `OPTIONS` and `POST`.
+
+Fix (server-side):
+
+- Add CORS middleware to the `refresh` HTTP function.
+- Ensure `OPTIONS /refresh` returns `204` and includes CORS headers.
+- Ensure `POST /refresh` includes CORS headers and then proceeds to auth verification + computation.
+
+Allowed origins/headers (current policy):
+
+- Allowed origin includes `http://localhost:5173` (Vite dev)
+- Production origin: placeholder allowlist via env (Electron custom protocol / hosted origin)
+- Allowed headers include `Authorization`, `Content-Type`, `x-dev-email`
+- Allowed methods: `POST`, `OPTIONS`
+
 ### Auth model
 
 - Production:
@@ -101,10 +133,35 @@ Related docs:
 - Emulator/dev:
   - Can send `x-dev-email: you@example.com` when `FUNCTIONS_EMULATOR=true`
 
+### Secrets (ClickUp / Instagram)
+
+Third-party API credentials are stored in **Google Cloud Secret Manager** and injected into the Gen2 service via the Functions **Params API** (`defineSecret`).
+
+- Do not put ClickUp/Instagram secrets in renderer `.env`.
+- Do not rely on `functions/.env` for production; Gen2 runs on Cloud Run and only sees deploy-time env/secrets.
+
+One-time setup per Firebase project:
+
+```bash
+firebase functions:secrets:set CLICKUP_API_TOKEN
+firebase functions:secrets:set INSTAGRAM_ACCESS_TOKEN
+firebase functions:secrets:set INSTAGRAM_IG_USER_ID
+```
+
+Deploy to apply secret bindings:
+
+```bash
+firebase deploy --only functions
+```
+
+Important: avoid configuring the same key as both a normal env var and a Secret binding (Cloud Run rejects overlaps).
+
 ### Target month resolution
 
 - If request body includes `targetMonth`, it is validated and used.
-- Otherwise it uses the snapshot rule: **target month is the previous calendar month**.
+- Otherwise it uses the snapshot rule: **target month is the current month (UTC)**.
+
+Note: month targeting logic lives in the backend engine (`backend/snapshots/monthLogic.ts`) and is copied into the Functions build.
 
 ### Snapshot write semantics (idempotent)
 
@@ -146,3 +203,26 @@ From repo root:
 Notes:
 
 - Client Firestore writes are denied by design; all writes happen via Admin SDK in the Function.
+
+---
+
+## How to validate (CORS + refresh runtime)
+
+### DevTools (renderer)
+
+- Trigger refresh from the app.
+- In DevTools → Network you should see:
+  - An `OPTIONS` request to the refresh URL returning `204`
+  - Then a `POST` request returning `200` (or a JSON auth error such as `401/403`, but not a CORS error)
+
+Expected `OPTIONS` response headers include:
+
+- `Access-Control-Allow-Origin: http://localhost:5173`
+- `Access-Control-Allow-Methods` includes `POST` and `OPTIONS`
+- `Access-Control-Allow-Headers` includes `Authorization`, `Content-Type`, `x-dev-email`
+
+### Cloud logs
+
+- Verify function logs show both:
+  - `OPTIONS /refresh`
+  - `POST /refresh`

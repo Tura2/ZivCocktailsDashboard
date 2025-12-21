@@ -16,7 +16,7 @@ Constraints (F1):
 	- Update snapshot intentionally: `$env:F1_MONTH="2025-12"; npm run f1:assert:update:build`
 - Run with fixtures (deterministic):
 	- PowerShell: `$env:F1_MONTH="2025-12"; npm run f1:run:mock:build`
-	- Or direct: `npm run f1:build` then `node dist-backend/run/run-mock.js --month=2025-12`
+		- Or direct: `npm run f1:build` then `node dist/engine/run/run-mock.js --month=2025-12`
 - Run live (uses env vars):
 	- PowerShell: `$env:F1_MONTH="2025-12"; npm run f1:run:live:build`
 

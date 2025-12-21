@@ -21,7 +21,7 @@ function copyDir(src, dest) {
 
 function main() {
   const repoRoot = path.resolve(__dirname, '..', '..');
-  const distBackend = path.join(repoRoot, 'dist-backend');
+  const distBackend = path.join(repoRoot, 'dist', 'engine');
 
   if (!fs.existsSync(distBackend)) {
     throw new Error(

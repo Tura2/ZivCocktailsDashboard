@@ -75,7 +75,7 @@ async function main() {
     throw new Error(`Mock output differs from expected snapshot at index ${idx}.\n\n` +
         `Expected context:\n${expectedContext}\n\n` +
         `Actual context:\n${actualContext}\n\n` +
-        `If this change is intentional, regenerate with: node dist-backend/run/assert-mock-output.js --update (or set F1_MONTH).\n`);
+        `If this change is intentional, regenerate with: node dist/engine/run/assert-mock-output.js --update (or set F1_MONTH).\n`);
 }
 main().catch((err) => {
     console.error(err);

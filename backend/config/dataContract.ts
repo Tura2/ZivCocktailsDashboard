@@ -1,4 +1,4 @@
-// Locked identifiers from docs/context/DATA_CONTRACT.md
+// Locked identifiers from docs/DATA_CONTRACT.md
 
 export const CLICKUP = {
   spaceId: '90125747160',

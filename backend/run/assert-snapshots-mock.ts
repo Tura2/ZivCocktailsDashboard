@@ -95,7 +95,7 @@ async function main(): Promise<void> {
     `Snapshot output differs from expected at index ${idx}.\n\n` +
       `Expected context:\n${expectedText.slice(contextStart, contextEnd)}\n\n` +
       `Actual context:\n${actualText.slice(contextStart, contextEnd)}\n\n` +
-      `If intentional, regenerate with: node dist-backend/run/assert-snapshots-mock.js --update\n`,
+      `If intentional, regenerate with: node dist/engine/run/assert-snapshots-mock.js --update\n`,
   );
 }
 

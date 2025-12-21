@@ -11,28 +11,29 @@ This repository uses a small set of Markdown docs as the “source of truth” f
 - Pages/behavior (Dashboard, History, Scripts)
 - Snapshot invariants and offline behavior
 
-1. **ClickUp contract (IDs + fields)** → [DATA_CONTRACT.md](DATA_CONTRACT.md)
+2. **ClickUp contract (IDs + fields)** → [DATA_CONTRACT.md](DATA_CONTRACT.md)
 
 - ClickUp list IDs
 - Custom field IDs and types
 - Data guarantees/assumptions
 
-1. **Metric definitions & formulas** → [METRICS_SPEC.md](METRICS_SPEC.md)
+3. **Metric definitions & formulas** → [METRICS_SPEC.md](METRICS_SPEC.md)
 
 - Metric names, sources, filters, formulas
 - Global conventions (month ranges, VAT)
 - Snapshot calculation rules
 
-1. **Build sequence** → [ROADMAP.md](ROADMAP.md)
+4. **Build sequence** → [ROADMAP.md](ROADMAP.md)
 
 - Feature phases (F0–F9)
 - “Done when” acceptance checkpoints
 
 ## Current baseline
 
-- Foundation status (what’s already implemented): [F0_FOUNDATION.md](F0_FOUNDATION.md)
-- F1 compute engine (backend-only): [F1_CLOUD_DATA_ENGINE.md](F1_CLOUD_DATA_ENGINE.md)
-- F2 snapshot engine (backend-only, no persistence yet): [F2_SNAPSHOT_ENGINE.md](F2_SNAPSHOT_ENGINE.md)
+- Foundation status (what’s already implemented): [stages/F0_FOUNDATION.md](stages/F0_FOUNDATION.md)
+- F1 compute engine (backend-only): [stages/F1_CLOUD_DATA_ENGINE.md](stages/F1_CLOUD_DATA_ENGINE.md)
+- F2 snapshot engine (engine-only; persistence happens in F3): [stages/F2_SNAPSHOT_ENGINE.md](stages/F2_SNAPSHOT_ENGINE.md)
+- F3 persistence layer (Firestore writes via Functions): [stages/F3_FIRESTORE_PERSISTENCE.md](stages/F3_FIRESTORE_PERSISTENCE.md)
 
 ## Ground rules (quick)
 

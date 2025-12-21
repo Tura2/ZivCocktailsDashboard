@@ -3,7 +3,7 @@ import { assertMonth } from './monthValidation';
 import fs from 'node:fs';
 import path from 'node:path';
 
-// Engine imports (copied from repo-root dist-backend into functions/engine during build)
+// Engine imports (copied from repo-root dist/engine into functions/engine during build)
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const engineMonthLogic = require('../../engine/snapshots/monthLogic');
 // eslint-disable-next-line @typescript-eslint/no-var-requires

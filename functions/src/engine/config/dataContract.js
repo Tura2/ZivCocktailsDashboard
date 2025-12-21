@@ -1,5 +1,5 @@
 "use strict";
-// Locked identifiers from docs/context/DATA_CONTRACT.md
+// Locked identifiers from docs/DATA_CONTRACT.md
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.CLICKUP_SOURCE = exports.CLICKUP_STATUS = exports.CLICKUP = void 0;
 exports.CLICKUP = {

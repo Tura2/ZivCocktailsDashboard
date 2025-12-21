@@ -11,6 +11,8 @@ This file is a build sequence checklist. It complements (but does not replace):
 
 ## F0) Foundation & Guardrails (Non-negotiable)
 
+Stage doc: [stages/F0_FOUNDATION.md](stages/F0_FOUNDATION.md)
+
 **Goal:** Create a safe, stable base so nothing leaks secrets or logic.
 
 Includes:
@@ -31,6 +33,8 @@ Done when:
 
 ## F1) Cloud Data Engine (Core Logic)
 
+Stage doc: [stages/F1_CLOUD_DATA_ENGINE.md](stages/F1_CLOUD_DATA_ENGINE.md)
+
 **Goal:** Single authoritative computation engine.
 
 Includes:
@@ -49,6 +53,8 @@ Done when:
 
 ## F2) Snapshot Engine (Historical Truth)
 
+Stage doc: [stages/F2_SNAPSHOT_ENGINE.md](stages/F2_SNAPSHOT_ENGINE.md)
+
 **Goal:** Monthly history that never lies.
 
 Includes:
@@ -64,6 +70,8 @@ Done when:
 ---
 
 ## F3) Firestore Persistence Layer
+
+Stage doc: [stages/F3_FIRESTORE_PERSISTENCE.md](stages/F3_FIRESTORE_PERSISTENCE.md)
 
 **Goal:** Fast dashboard loads.
 

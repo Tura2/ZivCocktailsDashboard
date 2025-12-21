@@ -4,7 +4,7 @@ Electron + React (Vite) desktop dashboard for Ziv Cocktails.
 
 ## Docs
 
-- Context / reading order: [docs/context/CONTEXT_INDEX.md](docs/context/CONTEXT_INDEX.md)
+- Context / reading order: [docs/CONTEXT_INDEX.md](docs/CONTEXT_INDEX.md)
 
 ## Dev
 

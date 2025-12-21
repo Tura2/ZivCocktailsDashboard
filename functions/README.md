@@ -3,7 +3,7 @@
 Server-side persistence layer.
 
 - Uses Firebase Admin SDK (server-only)
-- Reuses the compiled backend engine (`dist-backend`) by copying it into `functions/engine` during build
+- Reuses the compiled backend engine (`dist/engine`) by copying it into `functions/engine` during build
 
 ## Build
 

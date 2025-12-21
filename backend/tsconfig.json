@@ -3,7 +3,7 @@
     "target": "ES2022",
     "module": "CommonJS",
     "moduleResolution": "Node",
-    "outDir": "../dist-backend",
+    "outDir": "../dist/engine",
     "rootDir": ".",
     "strict": true,
     "skipLibCheck": true,

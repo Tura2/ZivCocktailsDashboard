@@ -16,7 +16,8 @@ function createWindow() {
     win.loadURL('http://localhost:5173');
     win.webContents.openDevTools({ mode: 'detach' });
   } else {
-    const indexHtml = path.join(__dirname, '..', 'dist-renderer', 'index.html');
+    // __dirname is <repo>/dist/electron at runtime.
+    const indexHtml = path.join(__dirname, '..', 'renderer', 'index.html');
     win.loadFile(indexHtml);
   }
 }

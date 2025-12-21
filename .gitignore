@@ -1,14 +1,7 @@
 node_modules/
 .DS_Store
 
-# Vite
-/dist-renderer/
-
-# Electron compiled output
-/dist-electron/
-
-# Backend compiled output
-/dist-backend/
+dist/
 
 # Local env
 .env

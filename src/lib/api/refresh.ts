@@ -1,4 +1,4 @@
-import { auth, firebaseEnabled } from '@/lib/firebase';
+import { auth, firebaseApp, firebaseEnabled } from '@/lib/firebase';
 
 function getRefreshUrl(): string | null {
   const explicit = import.meta.env.VITE_REFRESH_URL as string | undefined;
@@ -74,6 +74,23 @@ export async function triggerRefresh(targetMonth?: string): Promise<RefreshResul
   let { response, payload } = await postRefresh(url, token1, targetMonth);
 
   if (!response.ok && response.status === 401 && payload?.error?.code === 'invalid_token') {
+    if (import.meta.env.DEV) {
+      try {
+        const tokenResult = await currentUser.getIdTokenResult();
+        // Intentionally do not log the token itself.
+        console.warn('[refresh] invalid_token (first attempt)', {
+          refreshUrl: url,
+          firebaseProjectId: firebaseApp?.options?.projectId,
+          aud: (tokenResult?.claims as any)?.aud,
+          iss: (tokenResult?.claims as any)?.iss,
+          exp: (tokenResult?.claims as any)?.exp,
+          iat: (tokenResult?.claims as any)?.iat,
+        });
+      } catch {
+        // ignore
+      }
+    }
+
     const token2 = await currentUser.getIdToken(true);
     ({ response, payload } = await postRefresh(url, token2, targetMonth));
   }

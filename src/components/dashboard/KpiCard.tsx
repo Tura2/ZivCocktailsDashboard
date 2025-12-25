@@ -1,4 +1,6 @@
 import Card from '@/components/dashboard/Card';
+import type { CategoryKey } from '@/ui/categoryTheme';
+import { getCategoryTheme } from '@/ui/categoryTheme';
 
 export type TrendDirection = 'up' | 'down' | 'neutral';
 
@@ -7,6 +9,8 @@ type KpiCardProps = {
   value: string | number;
   trendLabel?: string;
   trendDirection?: TrendDirection;
+  hideTrend?: boolean;
+  category?: CategoryKey;
   className?: string;
 };
 
@@ -27,14 +31,21 @@ export default function KpiCard({
   value,
   trendLabel,
   trendDirection = 'neutral',
+  hideTrend = false,
+  category,
   className = '',
 }: KpiCardProps) {
+  const t = category ? getCategoryTheme(category) : null;
+
   return (
-    <Card className={className}>
-      <p className="text-sm font-medium text-slate-500">{label}</p>
-      <div className="mt-4 flex items-baseline justify-between gap-4">
-        <span className="text-2xl font-semibold text-slate-900">{value}</span>
-        {trendLabel ? (
+    <Card className={['p-4', className].join(' ').trim()}>
+      <div className="flex items-start gap-2">
+        {t ? <span className={['h-2 w-2 rounded-full', t.accentDot].join(' ')} aria-hidden /> : null}
+        <p className="text-sm font-medium leading-snug text-slate-500">{label}</p>
+      </div>
+      <div className="mt-3 flex items-baseline justify-between gap-3">
+        <span className="text-2xl font-semibold tabular-nums text-slate-900">{value}</span>
+        {!hideTrend && trendLabel ? (
           <span className={`inline-flex items-center gap-1 rounded-full px-3 py-1 text-xs font-semibold ${trendClasses[trendDirection]}`}>
             <svg
               className={`h-3 w-3 ${iconColor[trendDirection]}`}

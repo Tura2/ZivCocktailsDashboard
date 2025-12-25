@@ -5,6 +5,11 @@ import { firebaseEnabled } from '@/lib/firebase';
 import { useDashboardLatest } from '@/lib/dashboard/useDashboardLatest';
 import type { DashboardMetrics } from '@/lib/dashboard/types';
 import { triggerRefresh } from '@/lib/api/refresh';
+import { Toolbar } from '@/components/ui/Toolbar';
+import { SectionCard } from '@/components/ui/SectionCard';
+import { KpiTile } from '@/components/ui/KpiTile';
+import type { DensityMode } from '@/ui/density';
+import { densityGaps } from '@/ui/density';
 
 function formatILS(value: number | null | undefined) {
   if (value == null) return '—';
@@ -32,29 +37,6 @@ function formatLastUpdated(iso: string | null) {
   return d.toLocaleString();
 }
 
-function MiniBarChart({ labels, values }: { labels: string[]; values: Array<number | null | undefined> }) {
-  const numbers = values.map((v) => (v == null ? 0 : v));
-  const max = Math.max(...numbers, 1);
-
-  return (
-    <div className="mt-4 grid gap-3">
-      {labels.map((label, idx) => {
-        const raw = values[idx];
-        const v = raw == null ? 0 : raw;
-        const widthPct = Math.max(2, Math.round((v / max) * 100));
-        return (
-          <div key={label} className="grid grid-cols-[140px,1fr,110px] items-center gap-3">
-            <div className="text-sm text-slate-600">{label}</div>
-            <div className="h-2 rounded-full bg-slate-100">
-              <div className="h-2 rounded-full bg-indigo-500" style={{ width: `${widthPct}%` }} />
-            </div>
-            <div className="text-right text-sm font-medium text-slate-900">{formatILS(raw as number | null)}</div>
-          </div>
-        );
-      })}
-    </div>
-  );
-}
 
 function MiniLineChart({ points, labels }: { points: Array<number | null | undefined>; labels: string[] }) {
   const values = points.map((v) => (v == null ? 0 : v));
@@ -89,46 +71,60 @@ function MiniLineChart({ points, labels }: { points: Array<number | null | undef
   );
 }
 
-function CategorySection({ title, items }: { title: string; items: Parameters<typeof KpiGrid>[0]['items'] }) {
-  return (
-    <section className="mt-6">
-      <div className="mb-3 flex items-baseline justify-between">
-        <h2 className="text-sm font-semibold uppercase tracking-wide text-slate-600">{title}</h2>
-      </div>
-      <KpiGrid items={items} />
-    </section>
-  );
-}
-
 function buildKpis(metrics: DashboardMetrics) {
   return {
     financial: [
-      { key: 'monthlyRevenue', label: 'Monthly revenue (gross)', value: formatILS(metrics.financial.monthlyRevenue.grossILS) },
-      { key: 'expectedCashflow', label: 'Expected cashflow (gross)', value: formatILS(metrics.financial.expectedCashflow.grossILS) },
-      { key: 'expectedExpenses', label: 'Expected expenses (gross)', value: formatILS(metrics.financial.expectedExpenses.grossILS) },
-      { key: 'monthlyRevenueNet', label: 'Monthly revenue (net)', value: formatILS(metrics.financial.monthlyRevenue.netILS) },
+      { key: 'monthlyRevenue', label: 'Monthly revenue (gross)', value: formatILS(metrics.financial.monthlyRevenue.grossILS), category: 'financial' as const },
+      { key: 'expectedCashflow', label: 'Expected cashflow (gross)', value: formatILS(metrics.financial.expectedCashflow.grossILS), category: 'financial' as const },
+      { key: 'expectedExpenses', label: 'Expected expenses (gross)', value: formatILS(metrics.financial.expectedExpenses.grossILS), category: 'financial' as const },
+      { key: 'monthlyRevenueNet', label: 'Monthly revenue (net)', value: formatILS(metrics.financial.monthlyRevenue.netILS), category: 'financial' as const },
     ],
     marketing: [
-      { key: 'totalLeads', label: 'Total leads', value: formatNumber(metrics.marketing.totalLeads.value) },
-      { key: 'relevantLeads', label: 'Relevant leads', value: formatNumber(metrics.marketing.relevantLeads.value) },
-      { key: 'landingVisits', label: 'Landing visits', value: formatNumber(metrics.marketing.landingVisits.value) },
-      { key: 'landingConversionPct', label: 'Landing conversion', value: formatPercent(metrics.marketing.landingConversionPct.value) },
-      { key: 'followersDeltaMonth', label: 'Followers Δ (month)', value: formatNumber(metrics.marketing.followersDeltaMonth.value) },
-      { key: 'followersEndOfMonth', label: 'Followers (EOM)', value: formatNumber(metrics.marketing.followersEndOfMonth.value) },
+      { key: 'totalLeads', label: 'Total leads', value: formatNumber(metrics.marketing.totalLeads.value), category: 'marketing' as const },
+      { key: 'relevantLeads', label: 'Relevant leads', value: formatNumber(metrics.marketing.relevantLeads.value), category: 'marketing' as const },
+      { key: 'landingVisits', label: 'Landing visits', value: formatNumber(metrics.marketing.landingVisits.value), category: 'marketing' as const },
+      { key: 'landingConversionPct', label: 'Landing conversion', value: formatPercent(metrics.marketing.landingConversionPct.value), category: 'marketing' as const },
+      { key: 'followersDeltaMonth', label: 'Followers Δ (month)', value: formatNumber(metrics.marketing.followersDeltaMonth.value), category: 'marketing' as const },
+      { key: 'followersEndOfMonth', label: 'Followers (EOM)', value: formatNumber(metrics.marketing.followersEndOfMonth.value), category: 'marketing' as const },
     ],
     sales: [
-      { key: 'avgRevenuePerDeal', label: 'Avg revenue / deal (gross)', value: formatILS(metrics.sales.avgRevenuePerDeal.grossILS) },
-      { key: 'salesCalls', label: 'Sales calls', value: formatNumber(metrics.sales.salesCalls.value) },
-      { key: 'closures', label: 'Closures', value: formatNumber(metrics.sales.closures.value) },
-      { key: 'closeRatePct', label: 'Close rate', value: formatPercent(metrics.sales.closeRatePct.value) },
+      { key: 'avgRevenuePerDeal', label: 'Avg revenue / deal (gross)', value: formatILS(metrics.sales.avgRevenuePerDeal.grossILS), category: 'sales' as const },
+      { key: 'salesCalls', label: 'Sales calls', value: formatNumber(metrics.sales.salesCalls.value), category: 'sales' as const },
+      { key: 'closures', label: 'Closures', value: formatNumber(metrics.sales.closures.value), category: 'sales' as const },
+      { key: 'closeRatePct', label: 'Close rate', value: formatPercent(metrics.sales.closeRatePct.value), category: 'sales' as const },
     ],
     operations: [
-      { key: 'activeCustomers', label: 'Active customers', value: formatNumber(metrics.operations.activeCustomers.value) },
-      { key: 'cancellations', label: 'Cancellations', value: formatNumber(metrics.operations.cancellations.value) },
-      { key: 'referralsWordOfMouth', label: 'Referrals (WoM)', value: formatNumber(metrics.operations.referralsWordOfMouth.value) },
-      { key: 'returningCustomers', label: 'Returning customers', value: formatNumber(metrics.operations.returningCustomers.value) },
+      { key: 'activeCustomers', label: 'Active customers', value: formatNumber(metrics.operations.activeCustomers.value), category: 'operations' as const },
+      { key: 'cancellations', label: 'Cancellations', value: formatNumber(metrics.operations.cancellations.value), category: 'operations' as const },
+      { key: 'referralsWordOfMouth', label: 'Referrals (WoM)', value: formatNumber(metrics.operations.referralsWordOfMouth.value), category: 'operations' as const },
+      { key: 'returningCustomers', label: 'Returning customers', value: formatNumber(metrics.operations.returningCustomers.value), category: 'operations' as const },
     ],
   };
+}
+
+function SkeletonTile() {
+  return (
+    <div className="animate-pulse rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+      <div className="h-4 w-32 rounded bg-slate-100" />
+      <div className="mt-3 h-8 w-40 rounded bg-slate-100" />
+    </div>
+  );
+}
+
+function SkeletonSection() {
+  return (
+    <div className="animate-pulse rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
+      <div className="h-4 w-40 rounded bg-slate-100" />
+      <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        {Array.from({ length: 4 }).map((_, idx) => (
+          <div key={idx} className="rounded-xl border border-slate-100 bg-white p-4">
+            <div className="h-3 w-32 rounded bg-slate-100" />
+            <div className="mt-3 h-6 w-24 rounded bg-slate-100" />
+          </div>
+        ))}
+      </div>
+    </div>
+  );
 }
 
 export function DashboardPage() {
@@ -136,6 +132,7 @@ export function DashboardPage() {
   const [refreshState, setRefreshState] = useState<{ status: 'idle' | 'running' | 'ok' | 'error'; message?: string }>(
     () => ({ status: 'idle' }),
   );
+  const [density, setDensity] = useState<DensityMode>('comfortable');
 
   const latest = state.status === 'ready' ? state.data : null;
   const metrics = latest?.metrics ?? null;
@@ -166,35 +163,51 @@ export function DashboardPage() {
     );
   }
 
-  return (
-    <div className="space-y-4">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <h1 className="text-xl font-semibold text-slate-900">Dashboard</h1>
-          <p className="mt-1 text-sm text-slate-600">
-            Last updated: <span className="font-medium text-slate-900">{formatLastUpdated(lastUpdatedIso)}</span>
-            {latest?.month ? <span className="ml-2 text-slate-400">·</span> : null}
-            {latest?.month ? <span className="ml-2 text-slate-600">Month: {latest.month}</span> : null}
-          </p>
-        </div>
+  const gaps = densityGaps(density);
+  const refreshDisabled = refreshState.status === 'running' || state.status === 'disabled';
 
-        <div className="flex items-center gap-3">
-          {refreshState.status === 'error' ? <span className="text-sm text-red-600">{refreshState.message}</span> : null}
-          {refreshState.status === 'ok' ? <span className="text-sm text-green-700">{refreshState.message}</span> : null}
-          <button
-            className="rounded-md border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-900 disabled:opacity-60"
-            onClick={onRefresh}
-            disabled={refreshState.status === 'running' || state.status === 'disabled'}
-          >
-            {refreshState.status === 'running' ? 'Refreshing…' : 'Refresh'}
-          </button>
-        </div>
-      </div>
+  return (
+    <div className={gaps.page}>
+      <Toolbar
+        title="Dashboard"
+        subtitle={
+          <>
+            Last updated: <span className="font-medium text-slate-900">{formatLastUpdated(lastUpdatedIso)}</span>
+            {latest?.month ? <span className="mx-2 text-slate-300">·</span> : null}
+            {latest?.month ? <span className="text-slate-600">Month: {latest.month}</span> : null}
+          </>
+        }
+        density={density}
+        onDensityChange={setDensity}
+        actions={
+          <div className="flex items-center gap-3">
+            {refreshState.status === 'error' ? <span className="text-sm text-red-600">{refreshState.message}</span> : null}
+            {refreshState.status === 'ok' ? <span className="text-sm text-green-700">{refreshState.message}</span> : null}
+            <button
+              className="rounded-lg bg-slate-900 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-slate-800 disabled:opacity-60"
+              onClick={onRefresh}
+              disabled={refreshDisabled}
+            >
+              {refreshState.status === 'running' ? 'Refreshing…' : 'Refresh'}
+            </button>
+          </div>
+        }
+      />
 
       {state.status === 'loading' ? (
-        <Card>
-          <p className="text-sm text-slate-600">Loading `dashboard/latest`…</p>
-        </Card>
+        <div className={['grid grid-cols-12', gaps.grid].join(' ')}>
+          <div className={['col-span-12 grid grid-cols-2 md:grid-cols-4', gaps.tiles].join(' ')}>
+            {Array.from({ length: 4 }).map((_, idx) => (
+              <SkeletonTile key={idx} />
+            ))}
+          </div>
+          <div className="col-span-12">
+            <SkeletonSection />
+          </div>
+          <div className="col-span-12">
+            <SkeletonSection />
+          </div>
+        </div>
       ) : null}
 
       {state.status === 'error' ? (
@@ -205,35 +218,73 @@ export function DashboardPage() {
 
       {state.status === 'ready' && !latest ? (
         <Card>
-          <p className="text-sm text-slate-600">No data found at `dashboard/latest`. Click Refresh to generate the latest dashboard.</p>
+          <div className="flex flex-col items-center justify-center gap-3 py-10 text-center">
+            <h2 className="text-lg font-semibold text-slate-900">No dashboard data yet</h2>
+            <p className="max-w-xl text-sm text-slate-600">No data found at `dashboard/latest`. Run a Refresh to generate the latest dashboard.</p>
+            <button
+              className="mt-2 rounded-lg bg-slate-900 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-slate-800 disabled:opacity-60"
+              onClick={onRefresh}
+              disabled={refreshDisabled}
+            >
+              {refreshState.status === 'running' ? 'Refreshing…' : 'Refresh'}
+            </button>
+          </div>
         </Card>
       ) : null}
 
       {metrics && kpis ? (
         <>
-          <CategorySection title="Financial" items={kpis.financial} />
-          <CategorySection title="Marketing" items={kpis.marketing} />
-          <CategorySection title="Sales" items={kpis.sales} />
-          <CategorySection title="Operations" items={kpis.operations} />
+          <div className={['grid grid-cols-12', gaps.grid].join(' ')}>
+            <div className={['col-span-12 grid grid-cols-2 md:grid-cols-4', gaps.tiles].join(' ')}>
+              <KpiTile category="financial" label="Monthly revenue (gross)" value={formatILS(metrics.financial.monthlyRevenue.grossILS)} />
+              <KpiTile category="marketing" label="Total leads" value={formatNumber(metrics.marketing.totalLeads.value)} />
+              <KpiTile category="sales" label="Closures" value={formatNumber(metrics.sales.closures.value)} />
+              <KpiTile category="operations" label="Active customers" value={formatNumber(metrics.operations.activeCustomers.value)} />
+            </div>
 
-          <div className="mt-8 grid grid-cols-1 gap-4 lg:grid-cols-2">
-            <Card>
-              <h3 className="text-lg font-semibold text-slate-900">Financial snapshot (gross ILS)</h3>
-              <p className="mt-1 text-sm text-slate-500">Bars reflect values from `dashboard/latest.metrics.financial`.</p>
-              <MiniBarChart
-                labels={['Monthly revenue', 'Expected cashflow', 'Expected expenses']}
-                values={[metrics.financial.monthlyRevenue.grossILS, metrics.financial.expectedCashflow.grossILS, metrics.financial.expectedExpenses.grossILS]}
-              />
-            </Card>
+            <div className="col-span-12">
+              <div className={['grid grid-cols-12', gaps.grid].join(' ')}>
+                <div className="col-span-12 xl:col-span-6">
+                  <SectionCard
+                    category="financial"
+                    title="Financial"
+                    subtitle="Revenue, cashflow and expenses"
+                  >
+                    <KpiGrid items={kpis.financial} />
+                  </SectionCard>
+                </div>
 
-            <Card>
-              <h3 className="text-lg font-semibold text-slate-900">Lead → close funnel (counts)</h3>
-              <p className="mt-1 text-sm text-slate-500">Line reflects a funnel using values from `dashboard/latest.metrics`.</p>
-              <MiniLineChart
-                labels={['Total leads', 'Relevant leads', 'Sales calls', 'Closures']}
-                points={[metrics.marketing.totalLeads.value, metrics.marketing.relevantLeads.value, metrics.sales.salesCalls.value, metrics.sales.closures.value]}
-              />
-            </Card>
+                <div className="col-span-12 xl:col-span-6">
+                  <SectionCard
+                    category="marketing"
+                    title="Marketing"
+                    subtitle="Lead volume and top-of-funnel"
+                  >
+                    <KpiGrid items={kpis.marketing} />
+                  </SectionCard>
+                </div>
+
+                <div className="col-span-12 xl:col-span-6">
+                  <SectionCard
+                    category="sales"
+                    title="Sales"
+                    subtitle="Calls, closures, and conversion"
+                  >
+                    <KpiGrid items={kpis.sales} />
+                  </SectionCard>
+                </div>
+
+                <div className="col-span-12 xl:col-span-6">
+                  <SectionCard
+                    category="operations"
+                    title="Operations"
+                    subtitle="Customers, retention, and referrals"
+                  >
+                    <KpiGrid items={kpis.operations} />
+                  </SectionCard>
+                </div>
+              </div>
+            </div>
           </div>
         </>
       ) : null}

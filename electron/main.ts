@@ -7,9 +7,15 @@ function createWindow() {
   const win = new BrowserWindow({
     width: 1200,
     height: 800,
+    show: false,
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
     },
+  });
+
+  win.once('ready-to-show', () => {
+    win.maximize();
+    win.show();
   });
 
   if (isDev) {

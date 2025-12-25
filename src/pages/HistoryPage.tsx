@@ -2,10 +2,13 @@ import { useMemo, useState } from 'react';
 import Card from '@/components/dashboard/Card';
 import KpiGrid from '@/components/dashboard/KpiGrid';
 import type { TrendDirection } from '@/components/dashboard/KpiCard';
-import { firebaseEnabled } from '@/lib/firebase';
+import { firebaseEnabled, firestore } from '@/lib/firebase';
 import type { YYYYMM } from '@/lib/dashboard/types';
 import { useSnapshots } from '@/lib/snapshots/useSnapshots';
 import type { DiffCountLeaf, DiffMoneyLeaf, SnapshotDoc } from '@/lib/snapshots/types';
+import type { SnapshotRecord } from '@/lib/snapshots/types';
+import { doc, getDoc } from 'firebase/firestore';
+import { exportSnapshotToCsv, exportSnapshotToPdf, exportSnapshotToXlsx, saveBytesAsFile, saveTextAsFile } from '@/export';
 
 const DEFAULT_RECENT_MONTHS = 6;
 const MAX_MONTHS_TO_FETCH = 60;
@@ -330,6 +333,12 @@ export function HistoryPage() {
   const { state } = useSnapshots({ limit: MAX_MONTHS_TO_FETCH });
   const [startMonth, setStartMonth] = useState<YYYYMM | ''>('');
   const [endMonth, setEndMonth] = useState<YYYYMM | ''>('');
+  const [exportState, setExportState] = useState<
+    | { status: 'idle' }
+    | { status: 'running'; month: YYYYMM; format: 'csv' | 'xlsx' | 'pdf' }
+    | { status: 'ok'; message: string }
+    | { status: 'error'; message: string }
+  >({ status: 'idle' });
 
   const snapshots = state.status === 'ready' ? state.data : [];
   const byMonth = useMemo(() => new Map<YYYYMM, SnapshotDoc>(snapshots.map((s) => [s.month, s])), [snapshots]);
@@ -384,6 +393,48 @@ export function HistoryPage() {
       </Card>
     );
   }
+
+  const exportMonth = async (month: YYYYMM, format: 'csv' | 'xlsx' | 'pdf') => {
+    if (!firestore) {
+      setExportState({ status: 'error', message: 'Firestore is not configured.' });
+      return;
+    }
+
+    setExportState({ status: 'running', month, format });
+    try {
+      // MUST read the snapshot doc before exporting.
+      const ref = doc(firestore, 'snapshots', month);
+      const snap = await getDoc(ref);
+      if (!snap.exists()) {
+        setExportState({ status: 'error', message: `No snapshot found at snapshots/${month}` });
+        return;
+      }
+
+      const snapshot = snap.data() as SnapshotRecord;
+      const base = `ziv-cocktails_snapshot_${month}`;
+
+      if (format === 'csv') {
+        const csv = exportSnapshotToCsv(snapshot);
+        saveTextAsFile(csv, `${base}.csv`, 'text/csv;charset=utf-8');
+        setExportState({ status: 'ok', message: `Exported ${month} to CSV.` });
+        return;
+      }
+
+      if (format === 'xlsx') {
+        const ab = exportSnapshotToXlsx(snapshot);
+        saveBytesAsFile(ab, `${base}.xlsx`, 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+        setExportState({ status: 'ok', message: `Exported ${month} to XLSX.` });
+        return;
+      }
+
+      const pdf = exportSnapshotToPdf(snapshot);
+      saveBytesAsFile(pdf, `${base}.pdf`, 'application/pdf');
+      setExportState({ status: 'ok', message: `Exported ${month} to PDF.` });
+    } catch (e) {
+      const err = e as Error;
+      setExportState({ status: 'error', message: err.message || 'Export failed' });
+    }
+  };
 
   return (
     <div className="space-y-4">
@@ -448,6 +499,26 @@ export function HistoryPage() {
         </div>
       </Card>
 
+      {exportState.status === 'running' ? (
+        <Card>
+          <p className="text-sm text-slate-600">
+            Exporting {exportState.month} to {exportState.format.toUpperCase()}…
+          </p>
+        </Card>
+      ) : null}
+
+      {exportState.status === 'ok' ? (
+        <Card>
+          <p className="text-sm text-green-700">{exportState.message}</p>
+        </Card>
+      ) : null}
+
+      {exportState.status === 'error' ? (
+        <Card>
+          <p className="text-sm text-red-600">{exportState.message}</p>
+        </Card>
+      ) : null}
+
       {state.status === 'loading' ? (
         <Card>
           <p className="text-sm text-slate-600">Loading `snapshots/*`…</p>
@@ -510,8 +581,38 @@ export function HistoryPage() {
             return (
               <Card key={month}>
                 <div className="flex flex-col gap-1 sm:flex-row sm:items-baseline sm:justify-between">
-                  <h2 className="text-lg font-semibold text-slate-900">{snap.month}</h2>
-                  <div className="text-sm text-slate-500">Computed: {formatLastUpdated(snap.computedAt)}</div>
+                  <div>
+                    <h2 className="text-lg font-semibold text-slate-900">{snap.month}</h2>
+                    <div className="mt-1 text-sm text-slate-500">Computed: {formatLastUpdated(snap.computedAt)}</div>
+                  </div>
+
+                  <div className="mt-2 flex flex-wrap items-center gap-2 sm:mt-0">
+                    <span className="text-sm text-slate-600">Export:</span>
+                    <button
+                      className="rounded-md border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-900 disabled:opacity-60"
+                      onClick={() => exportMonth(snap.month, 'csv')}
+                      disabled={exportState.status === 'running'}
+                      aria-label={`Export ${snap.month} as CSV`}
+                    >
+                      CSV
+                    </button>
+                    <button
+                      className="rounded-md border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-900 disabled:opacity-60"
+                      onClick={() => exportMonth(snap.month, 'xlsx')}
+                      disabled={exportState.status === 'running'}
+                      aria-label={`Export ${snap.month} as XLSX`}
+                    >
+                      XLSX
+                    </button>
+                    <button
+                      className="rounded-md border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-900 disabled:opacity-60"
+                      onClick={() => exportMonth(snap.month, 'pdf')}
+                      disabled={exportState.status === 'running'}
+                      aria-label={`Export ${snap.month} as PDF`}
+                    >
+                      PDF
+                    </button>
+                  </div>
                 </div>
 
                 <CategorySection title="Financial" items={kpis.financial} />

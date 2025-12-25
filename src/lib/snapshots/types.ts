@@ -49,3 +49,6 @@ export interface SnapshotDoc {
   metrics: DashboardMetrics;
   diffFromPreviousPct: DiffObject;
 }
+
+// Alias used by the export engine and docs (matches backend naming).
+export type SnapshotRecord = SnapshotDoc;

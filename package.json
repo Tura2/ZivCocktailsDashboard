@@ -18,21 +18,21 @@
     "f1:assert:build": "npm run f1:build && npm run f1:assert",
     "f1:assert:update": "node dist/engine/run/assert-mock-output.js --update",
     "f1:assert:update:build": "npm run f1:build && npm run f1:assert:update",
-
     "f2:run:mock": "node dist/engine/run/run-snapshots-mock.js",
     "f2:run:mock:build": "npm run f1:build && npm run f2:run:mock",
     "f2:assert": "node dist/engine/run/assert-snapshots-mock.js",
     "f2:assert:build": "npm run f1:build && npm run f2:assert",
     "f2:assert:update": "node dist/engine/run/assert-snapshots-mock.js --update",
     "f2:assert:update:build": "npm run f1:build && npm run f2:assert:update",
-
     "lint": "echo 'lint not configured'"
   },
   "dependencies": {
     "firebase": "^10.14.1",
+    "jspdf": "^3.0.4",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
-    "react-router-dom": "^6.28.0"
+    "react-router-dom": "^6.28.0",
+    "xlsx": "^0.18.5"
   },
   "devDependencies": {
     "@types/node": "^22.10.2",

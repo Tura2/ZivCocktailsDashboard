@@ -30,6 +30,12 @@ function formatPercent(value: number | null | undefined) {
   return `${value}%`;
 }
 
+function formatPercent2Trunc(value: number | null | undefined) {
+  if (value == null) return '—';
+  const truncated = Math.trunc(value * 100) / 100;
+  return `${truncated.toFixed(2)}%`;
+}
+
 function formatLastUpdated(iso: string | null) {
   if (!iso) return '—';
   const d = new Date(iso);
@@ -91,7 +97,7 @@ function buildKpis(metrics: DashboardMetrics) {
       { key: 'avgRevenuePerDeal', label: 'Avg revenue / deal (gross)', value: formatILS(metrics.sales.avgRevenuePerDeal.grossILS), category: 'sales' as const },
       { key: 'salesCalls', label: 'Sales calls', value: formatNumber(metrics.sales.salesCalls.value), category: 'sales' as const },
       { key: 'closures', label: 'Closures', value: formatNumber(metrics.sales.closures.value), category: 'sales' as const },
-      { key: 'closeRatePct', label: 'Close rate', value: formatPercent(metrics.sales.closeRatePct.value), category: 'sales' as const },
+      { key: 'closeRatePct', label: 'Close rate', value: formatPercent2Trunc(metrics.sales.closeRatePct.value), category: 'sales' as const },
     ],
     operations: [
       { key: 'activeCustomers', label: 'Active customers', value: formatNumber(metrics.operations.activeCustomers.value), category: 'operations' as const },

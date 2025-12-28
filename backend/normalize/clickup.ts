@@ -10,6 +10,40 @@ function getString(task: ClickUpTask, fieldId: string): string | null {
   const field = getCustomField(task, fieldId);
   const v = field?.value;
   if (v == null) return null;
+
+  // ClickUp drop_down fields often return a numeric index (or sometimes option id).
+  // Normalize to the option name so downstream comparisons can use string constants.
+  if (field?.type === 'drop_down') {
+    const options = field.type_config?.options ?? [];
+
+    if (typeof v === 'number' && Number.isFinite(v)) {
+      const idx = Math.trunc(v);
+      const opt = options[idx] ?? options.find((o) => o.orderindex === idx);
+      return opt?.name ?? String(v);
+    }
+
+    if (typeof v === 'string') {
+      const byId = options.find((o) => o.id === v);
+      if (byId?.name) return byId.name;
+
+      const vLower = v.toLowerCase();
+      const byName = options.find((o) => (o.name ?? '').toLowerCase() === vLower);
+      if (byName?.name) return byName.name;
+
+      const asIndex = Number(v);
+      if (Number.isFinite(asIndex)) {
+        const idx = Math.trunc(asIndex);
+        const opt = options[idx] ?? options.find((o) => o.orderindex === idx);
+        return opt?.name ?? v;
+      }
+
+      // If we can't resolve the option name (e.g. options not present), keep the raw string.
+      return v;
+    }
+
+    return String(v);
+  }
+
   if (typeof v === 'string') return v;
   return String(v);
 }

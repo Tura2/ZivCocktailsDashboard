@@ -79,6 +79,17 @@ Used for **verification only**, not revenue computation.
 - Closed Won implies deposit paid
 - iCount ID must be unique across Income + Expenses
 
+## 6.1 ClickUp dropdown values (important)
+
+Some ClickUp custom fields are `dropdown`/`drop_down` types (e.g. `source`, `lossReason`). In ClickUp’s API response, the `value` for these fields can come back as a **number** (an option index/order) rather than a human-readable string.
+
+Engine rule:
+- The backend normalizes dropdown values to the **option name** using the field’s `type_config.options`.
+- Metric logic compares against names like `Landing Page`, `Word of Mouth`, and `Not Relevant`.
+
+Status naming:
+- Canonical loss status string used by the engine is `Closed Lost` (some historical data may contain `Closed Loss`).
+
 ---
 
 ## 7. Usage Rules

@@ -10,6 +10,7 @@ export interface SalesMetricsInput {
   range: MonthRange;
   leads: ReadonlyArray<NormalizedLead>;
   monthlyRevenue: CurrencyMetric;
+  extraClosedWonCloseMs?: ReadonlyArray<number | null>;
 }
 
 export interface SalesMetricsOutput {
@@ -41,6 +42,12 @@ export function computeSalesMetrics(input: SalesMetricsInput): SalesMetricsOutpu
       if (closeMs != null && isWithinMonth(closeMs, input.range)) {
         closuresCount += 1;
       }
+    }
+  }
+
+  for (const closeMs of input.extraClosedWonCloseMs ?? []) {
+    if (closeMs != null && isWithinMonth(closeMs, input.range)) {
+      closuresCount += 1;
     }
   }
 

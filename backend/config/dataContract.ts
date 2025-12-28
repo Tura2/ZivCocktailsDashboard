@@ -28,7 +28,7 @@ export const CLICKUP = {
 export const CLICKUP_STATUS = {
   newLead: 'New Lead',
   closedWon: 'Closed Won',
-  closedLoss: 'Closed Loss',
+  closedLoss: 'Closed Lost',
   billing: 'Billing',
   cancelled: 'Cancelled',
 

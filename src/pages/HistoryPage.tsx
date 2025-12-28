@@ -73,6 +73,12 @@ function formatPercentValue(value: number | null | undefined) {
   return `${value}%`;
 }
 
+function formatPercentValue2Trunc(value: number | null | undefined) {
+  if (value == null) return '—';
+  const truncated = Math.trunc(value * 100) / 100;
+  return `${truncated.toFixed(2)}%`;
+}
+
 function formatLastUpdated(iso: string | null) {
   if (!iso) return '—';
   const d = new Date(iso);
@@ -204,7 +210,7 @@ function buildKpis(snapshot: SnapshotDoc) {
       {
         key: 'closeRatePct',
         label: 'Close rate',
-        value: formatPercentValue(m.sales.closeRatePct.value),
+        value: formatPercentValue2Trunc(m.sales.closeRatePct.value),
         ...trendFromCountLeaf(d.sales.closeRatePct),
         category: 'sales' as const,
       },

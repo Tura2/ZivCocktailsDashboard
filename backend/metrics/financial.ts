@@ -11,6 +11,7 @@ export interface FinancialMetricsInput {
   range: MonthRange;
   leads: ReadonlyArray<NormalizedLead>;
   expenses: ReadonlyArray<NormalizedExpense>;
+  extraClosedWon?: ReadonlyArray<{ closeMs: number | null; budgetGrossILS: number | null; notes?: string[] }>;
 }
 
 export interface FinancialMetricsOutput {
@@ -40,6 +41,22 @@ export function computeFinancialMetrics(input: FinancialMetricsInput): Financial
     if (closeMs == null || !isWithinMonth(closeMs, input.range)) continue;
 
     const amounts = ensureNetGross({ grossILS: lead.budgetGrossILS, netILS: null });
+    if (amounts.grossILS == null || amounts.netILS == null) continue;
+
+    revenueGross += amounts.grossILS;
+    revenueNet += amounts.netILS;
+    revenueCount += 1;
+  }
+
+  // Also include deals that were moved out of Incoming Leads by automation (ClickBot) into Event Calendar.
+  // Those tasks no longer appear in the Incoming Leads list at refresh time.
+  for (const deal of input.extraClosedWon ?? []) {
+    const closeMs = deal.closeMs;
+    if (closeMs == null || !isWithinMonth(closeMs, input.range)) continue;
+
+    if (deal.notes?.length) revenueNotes.push(...deal.notes);
+
+    const amounts = ensureNetGross({ grossILS: deal.budgetGrossILS, netILS: null });
     if (amounts.grossILS == null || amounts.netILS == null) continue;
 
     revenueGross += amounts.grossILS;

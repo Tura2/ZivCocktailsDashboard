@@ -1,5 +1,5 @@
 import type { CountMetric, PercentMetric, YYYYMM } from '../dashboard/types';
-import { CLICKUP_SOURCE, CLICKUP_STATUS } from '../config/dataContract';
+import { CLICKUP_SOURCE } from '../config/dataContract';
 import type { NormalizedLead } from '../normalize/clickup';
 import type { MonthRange } from '../time/month';
 import { isWithinMonth } from '../time/month';
@@ -24,11 +24,14 @@ export function computeMarketingMetrics(input: MarketingMetricsInput): Marketing
   let notRelevantLoss = 0;
   let landing = 0;
 
+  const isClosedLostStatus = (status: string | null) =>
+    ciEquals(status, 'Closed Lost') || ciEquals(status, 'Closed Loss');
+
   for (const lead of input.leads) {
     if (lead.createdMs == null || !isWithinMonth(lead.createdMs, input.range)) continue;
     total += 1;
 
-    if (ciEquals(lead.status, CLICKUP_STATUS.closedLoss) && ciEquals(lead.lossReason, 'Not Relevant')) {
+    if (isClosedLostStatus(lead.status) && ciEquals(lead.lossReason, 'Not Relevant')) {
       notRelevantLoss += 1;
     }
 

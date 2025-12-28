@@ -1,5 +1,5 @@
 import type { ClickUpClient, ListTasksOptions } from './ClickUpClient';
-import type { ClickUpListTasksResponse, ClickUpTask } from './types';
+import type { ClickUpListTasksResponse, ClickUpTask, ClickUpTaskComment, ClickUpTaskCommentsResponse } from './types';
 
 function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
@@ -62,6 +62,16 @@ export class ClickUpHttpClient implements ClickUpClient {
     }
 
     return tasks;
+  }
+
+  async getTaskComments(taskId: string): Promise<ClickUpTaskComment[]> {
+    const url = toUrl(`${this.baseUrl}/task/${taskId}/comment`, {
+      // ClickUp returns the newest comments by default; 25 is enough for our use.
+      // (No pagination needed for now.)
+    });
+
+    const json = await this.requestJson<ClickUpTaskCommentsResponse>(url);
+    return json.comments ?? [];
   }
 
   private async requestJson<T>(url: string): Promise<T> {

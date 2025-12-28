@@ -11,22 +11,31 @@ This repository uses a small set of Markdown docs as the “source of truth” f
 - Pages/behavior (Dashboard, History, Scripts)
 - Snapshot invariants and offline behavior
 
-2. **ClickUp contract (IDs + fields)** → [DATA_CONTRACT.md](DATA_CONTRACT.md)
+1. **ClickUp contract (IDs + fields)** → [DATA_CONTRACT.md](DATA_CONTRACT.md)
 
 - ClickUp list IDs
 - Custom field IDs and types
 - Data guarantees/assumptions
 
-3. **Metric definitions & formulas** → [METRICS_SPEC.md](METRICS_SPEC.md)
+1. **ClickUp computations (how fields are used)** → [CLICKUP_COMPUTATION.md](CLICKUP_COMPUTATION.md)
+
+- How raw ClickUp tasks are normalized
+- How each ClickUp field contributes to each dashboard metric
+
+1. **Metric definitions & formulas** → [METRICS_SPEC.md](METRICS_SPEC.md)
 
 - Metric names, sources, filters, formulas
 - Global conventions (month ranges, VAT)
 - Snapshot calculation rules
 
-4. **Build sequence** → [ROADMAP.md](ROADMAP.md)
+1. **Build sequence** → [ROADMAP.md](ROADMAP.md)
 
 - Feature phases (F0–F9)
 - “Done when” acceptance checkpoints
+
+## Recent changes
+
+- Quick log of recent doc + engine changes: [RECENT_CHANGES.md](RECENT_CHANGES.md)
 
 ## Current baseline
 

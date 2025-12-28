@@ -38,6 +38,10 @@ Related docs:
 - status == Closed Won
 - closeDate ∈ month
 
+**Production automation note (moved deals):**
+- If a Closed Won task is moved from Incoming Leads → Event Calendar and becomes `booked`, the engine may still count it as revenue.
+- In that case, the **closeDate** is taken from the ClickBot “Moved to Event Calendar … Closed Won” task comment timestamp.
+
 ---
 
 ### 1.2 תזרים צפוי החודש (Expected Cashflow)
@@ -71,7 +75,7 @@ Include:
 
 ### 2.2 לידים רלוונטיים
 - Total leads
-- minus Closed Loss with Loss Reason = Not Relevant
+- minus Closed Lost (historically sometimes appears as Closed Loss) with Loss Reason = Not Relevant
 
 ---
 
@@ -112,6 +116,9 @@ Source: Instagram API (backend only)
 
 ### 3.3 כמות סגירות
 - Closed Won in month
+
+**Production automation note (moved deals):**
+- If the deal was moved to Event Calendar, the close month is determined by the ClickBot move-comment timestamp.
 
 ### 3.4 אחוזי סגירה
 - closedWon / salesCalls * 100

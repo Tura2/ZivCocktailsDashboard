@@ -1,4 +1,4 @@
-import type { ClickUpTask } from './types';
+import type { ClickUpTask, ClickUpTaskComment } from './types';
 
 export interface ListTasksOptions {
   listId: string;
@@ -8,4 +8,5 @@ export interface ListTasksOptions {
 
 export interface ClickUpClient {
   listTasks(options: ListTasksOptions): Promise<ClickUpTask[]>;
+  getTaskComments(taskId: string): Promise<ClickUpTaskComment[]>;
 }

@@ -1,7 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import type { ClickUpClient } from '../clickup/ClickUpClient';
-import type { ClickUpTask } from '../clickup/types';
+import type { ClickUpTask, ClickUpTaskComment } from '../clickup/types';
 import type { InstagramClient } from '../instagram/InstagramClient';
 
 function fixtureTasks(fileName: string): ClickUpTask[] {
@@ -20,6 +20,10 @@ export class MockClickUpClient implements ClickUpClient {
 
   async listTasks(options: { listId: string }): Promise<ClickUpTask[]> {
     return this.tasksByListId[options.listId] ?? [];
+  }
+
+  async getTaskComments(): Promise<ClickUpTaskComment[]> {
+    return [];
   }
 }
 

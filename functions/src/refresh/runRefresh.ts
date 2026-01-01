@@ -67,6 +67,10 @@ class MockClickUpClient {
   async listTasks(options: { listId: string }): Promise<any[]> {
     return this.tasksByListId[options.listId] ?? [];
   }
+
+  async getTaskComments(): Promise<any[]> {
+    return [];
+  }
 }
 
 class MockInstagramClient {

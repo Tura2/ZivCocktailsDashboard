@@ -8,9 +8,17 @@ import { computeMarketingMetrics } from '../metrics/marketing';
 import { computeSalesMetrics } from '../metrics/sales';
 import { computeOperationsMetrics } from '../metrics/operations';
 import type { InstagramClient } from '../instagram/InstagramClient';
-import { countMetric } from '../metrics/helpers';
-import { getClosedWonMoveTimestampMs } from '../clickup/comments';
+import { ciEquals, countMetric, currencyMetric } from '../metrics/helpers';
+import {
+  extractDepositPaidTimestampMs,
+  extractFirstBillingToDoneTransitionTimestampMs,
+  extractFirstDoneStatusChangeTimestampMs,
+  getClosedWonMoveTimestampMs,
+} from '../clickup/comments';
 import { CLICKUP } from '../config/dataContract';
+import { ensureNetGross } from '../vat/vat';
+import { isWithinMonth } from '../time/month';
+import type { ClickUpCustomField, ClickUpTask, ClickUpTaskComment } from '../clickup/types';
 
 export interface ComputeDashboardDeps {
   clickup: ClickUpClient;
@@ -37,6 +45,249 @@ function pickLastInMonth(series: Array<{ endTimeIso: string; value: number }>, r
   return last ? last.value : null;
 }
 
+function parseTaskMs(raw: string | null | undefined): number | null {
+  if (!raw) return null;
+  const n = Number(raw);
+  return Number.isFinite(n) ? Math.trunc(n) : null;
+}
+
+function parseNumberLoose(v: unknown): number | null {
+  if (v == null) return null;
+  if (typeof v === 'number') return Number.isFinite(v) ? v : null;
+  if (typeof v === 'string') {
+    const cleaned = v.replace(/[^0-9+\-.,]/g, '').replace(/,/g, '');
+    const asNum = Number(cleaned);
+    return Number.isFinite(asNum) ? asNum : null;
+  }
+  if (typeof v === 'object') {
+    const anyV = v as any;
+    if (anyV && typeof anyV.value !== 'undefined') return parseNumberLoose(anyV.value);
+  }
+  const asNum = Number(v as any);
+  return Number.isFinite(asNum) ? asNum : null;
+}
+
+function findCustomField(task: ClickUpTask, predicate: (f: ClickUpCustomField) => boolean): ClickUpCustomField | undefined {
+  return task.custom_fields?.find(predicate);
+}
+
+function readNumberCustomField(task: ClickUpTask, options: { id?: string; nameMatchers: RegExp[] }): number | null {
+  const field = findCustomField(task, (f) => {
+    if (options.id && f.id === options.id) return true;
+    const name = f.name ?? '';
+    return options.nameMatchers.some((re) => re.test(name));
+  });
+
+  return parseNumberLoose(field?.value);
+}
+
+function isDoneStatus(status: string | null | undefined): boolean {
+  if (!status) return false;
+  // Most ClickUp workspaces use one of these labels for a completed/closed task.
+  return ciEquals(status, 'done') || ciEquals(status, 'complete') || ciEquals(status, 'completed');
+}
+
+async function computeMonthlyRevenueFromEventCalendar(args: {
+  range: ReturnType<typeof getMonthRange>;
+  getComments: (taskId: string) => Promise<ClickUpTaskComment[]>;
+  eventTasks: ClickUpTask[];
+}): Promise<{ gross: number; net: number; notes: string[] }> {
+  const notes: string[] = [];
+
+  // Field selection:
+  // - Deposit: prefer explicit id if it matches the existing Paid Amount field, else name match.
+  // - Balance Due: name match only (field id not present in repo data contract).
+  const depositNameMatchers = [/deposit/i, /advance/i, /מקדמה/];
+  const balanceNameMatchers = [/balance/i, /due/i, /יתרה/, /השלמה/];
+
+  let depositsGross = 0;
+  let balancesGross = 0;
+  let depositCount = 0;
+  let balanceCount = 0;
+
+  // Bound comment lookups to keep refresh predictable.
+  const maxCommentLookups = 200;
+  let commentLookups = 0;
+
+  for (const task of args.eventTasks) {
+    const status = task.status?.status ?? null;
+
+    let comments: ClickUpTaskComment[] | null = null;
+    const getTaskComments = async () => {
+      if (comments) return comments;
+      if (commentLookups >= maxCommentLookups) return [];
+      commentLookups += 1;
+      comments = await args.getComments(task.id);
+      return comments;
+    };
+
+    // DONE attribution: prefer ClickBot automation comment timestamp (first time it hit DONE)
+    // to handle status reversion (DONE -> other -> DONE) without double counting.
+    let doneMs: number | null = null;
+    try {
+      doneMs = extractFirstDoneStatusChangeTimestampMs(await getTaskComments());
+    } catch (e) {
+      notes.push(`DONE status comment fetch failed for task ${task.id}: ${(e as Error).message}`);
+    }
+
+    if (doneMs == null) {
+      doneMs = parseTaskMs(task.date_closed ?? undefined) ?? (isDoneStatus(status) ? parseTaskMs(task.date_updated) : null);
+    }
+    const balanceDue = readNumberCustomField(task, { nameMatchers: balanceNameMatchers });
+
+    if (doneMs != null && isWithinMonth(doneMs, args.range)) {
+      if (balanceDue == null) {
+        notes.push(`Balance Due missing for DONE task ${task.id} => treated as 0`);
+      } else {
+        balancesGross += balanceDue;
+      }
+      balanceCount += 1;
+    }
+
+    // Deposit recognition uses comment timestamp; only attempt when we have a plausible deposit field
+    // or the task was touched in the month (so we can still surface missing-field errors).
+    const depositValue = readNumberCustomField(task, { id: CLICKUP.fields.paidAmount, nameMatchers: depositNameMatchers });
+    const updatedMs = parseTaskMs(task.date_updated);
+    const shouldCheckDepositComments =
+      (depositValue != null && depositValue !== 0) || (updatedMs != null && isWithinMonth(updatedMs, args.range));
+
+    if (!shouldCheckDepositComments) continue;
+    if (commentLookups >= maxCommentLookups) {
+      notes.push(`Deposit comment lookups capped at ${maxCommentLookups}; results may be incomplete`);
+      break;
+    }
+
+    let depositPaidMs: number | null = null;
+    try {
+      depositPaidMs = extractDepositPaidTimestampMs(await getTaskComments());
+    } catch (e) {
+      notes.push(`Deposit comment fetch failed for task ${task.id}: ${(e as Error).message}`);
+      continue;
+    }
+
+    if (depositPaidMs == null) continue;
+    if (!isWithinMonth(depositPaidMs, args.range)) continue;
+
+    if (depositValue == null) {
+      notes.push(`Deposit comment found but Deposit field missing for task ${task.id} => treated as 0`);
+    } else {
+      depositsGross += depositValue;
+    }
+    depositCount += 1;
+  }
+
+  notes.push(`Monthly revenue from Event Calendar: deposits=${depositsGross} (${depositCount} tasks), balances=${balancesGross} (${balanceCount} tasks)`);
+  notes.push('DONE attribution uses first ClickBot "Status has changed to : DONE" comment timestamp (fallback: task.date_closed)');
+  notes.push('Budget treated as gross ILS; net computed with VAT 18%');
+
+  const totals = ensureNetGross({ grossILS: depositsGross + balancesGross, netILS: null });
+  return { gross: totals.grossILS ?? 0, net: totals.netILS ?? 0, notes };
+}
+
+async function computeExpectedRevenueV2FromEventCalendar(args: {
+  range: ReturnType<typeof getMonthRange>;
+  getComments: (taskId: string) => Promise<ClickUpTaskComment[]>;
+  eventTasks: ClickUpTask[];
+}): Promise<{ gross: number; net: number; notes: string[] }> {
+  const notes: string[] = [];
+
+  const depositNameMatchers = [/deposit/i, /advance/i, /מקדמה/];
+  const balanceNameMatchers = [/balance/i, /due/i, /יתרה/, /השלמה/];
+
+  let depositsGross = 0;
+  let scheduledBalancesGross = 0;
+  let billingReleaseGross = 0;
+  let depositCount = 0;
+  let scheduledCount = 0;
+  let billingReleaseCount = 0;
+
+  // Bound comment lookups to keep refresh predictable.
+  const maxCommentLookups = 250;
+  let commentLookups = 0;
+
+  for (const task of args.eventTasks) {
+    const status = task.status?.status ?? null;
+    const eventDateMs = parseNumberLoose(findCustomField(task, (f) => f.id === CLICKUP.fields.requestedDate)?.value);
+
+    const depositValue = readNumberCustomField(task, { id: CLICKUP.fields.paidAmount, nameMatchers: depositNameMatchers });
+    const balanceDue = readNumberCustomField(task, { nameMatchers: balanceNameMatchers });
+
+    // Fetch comments once if we need any timestamp-based logic.
+    let comments: ClickUpTaskComment[] | null = null;
+    const getTaskComments = async () => {
+      if (comments) return comments;
+      if (commentLookups >= maxCommentLookups) return [];
+      commentLookups += 1;
+      comments = await args.getComments(task.id);
+      return comments;
+    };
+
+    // C) Billing Release: Billing -> Done transition in month
+    let billingToDoneMs: number | null = null;
+    try {
+      billingToDoneMs = extractFirstBillingToDoneTransitionTimestampMs(await getTaskComments());
+    } catch (e) {
+      notes.push(`Status history comment parse failed for task ${task.id}: ${(e as Error).message}`);
+      billingToDoneMs = null;
+    }
+
+    if (billingToDoneMs != null && isWithinMonth(billingToDoneMs, args.range)) {
+      if (balanceDue == null) {
+        notes.push(`Billing->Done transition found but Balance Due missing for task ${task.id} => treated as 0`);
+      } else {
+        billingReleaseGross += balanceDue;
+      }
+      billingReleaseCount += 1;
+    }
+
+    // A) Deposits: deposit-paid comment in month
+    if (commentLookups >= maxCommentLookups) {
+      notes.push(`Comment lookups capped at ${maxCommentLookups}; expected revenue may be incomplete`);
+      break;
+    }
+
+    let depositPaidMs: number | null = null;
+    try {
+      depositPaidMs = extractDepositPaidTimestampMs(await getTaskComments());
+    } catch (e) {
+      notes.push(`Deposit comment parse failed for task ${task.id}: ${(e as Error).message}`);
+      depositPaidMs = null;
+    }
+
+    if (depositPaidMs != null && isWithinMonth(depositPaidMs, args.range)) {
+      if (depositValue == null) {
+        notes.push(`Deposit comment found but Deposit field missing for task ${task.id} => treated as 0`);
+      } else {
+        depositsGross += depositValue;
+      }
+      depositCount += 1;
+    }
+
+    // B) Scheduled balances: requestedDate in month, status != Billing, and dedupe against billing->done tasks
+    const inEventMonth = eventDateMs != null && isWithinMonth(eventDateMs, args.range);
+    const isBilling = ciEquals(status, 'billing');
+    const excludedByDedupe = billingToDoneMs != null;
+
+    if (inEventMonth && !isBilling && !excludedByDedupe) {
+      if (balanceDue == null) {
+        notes.push(`Scheduled event in month but Balance Due missing for task ${task.id} => treated as 0`);
+      } else {
+        scheduledBalancesGross += balanceDue;
+      }
+      scheduledCount += 1;
+    }
+  }
+
+  notes.push('Expected Revenue v2.0: A=Deposits (comment month) + B=Scheduled Balances (event month, status!=Billing) + C=Billing->Done releases (transition month)');
+  notes.push(
+    `Expected Revenue breakdown: deposits=${depositsGross} (${depositCount} tasks), scheduledBalances=${scheduledBalancesGross} (${scheduledCount} tasks), billingReleases=${billingReleaseGross} (${billingReleaseCount} tasks)`,
+  );
+  notes.push('Budget treated as gross ILS; net computed with VAT 18%');
+
+  const totals = ensureNetGross({ grossILS: depositsGross + scheduledBalancesGross + billingReleaseGross, netILS: null });
+  return { gross: totals.grossILS ?? 0, net: totals.netILS ?? 0, notes };
+}
+
 export async function computeDashboard(month: YYYYMM, deps: ComputeDashboardDeps): Promise<DashboardMetrics> {
   const computedAt = deps.computedAt ?? new Date();
   const range = getMonthRange(month);
@@ -61,10 +312,13 @@ export async function computeDashboard(month: YYYYMM, deps: ComputeDashboardDeps
 
   const candidateEventTasks = eventTasks.filter((t) => !leadIds.has(t.id));
 
-  function parseTaskMs(raw: string | null | undefined): number | null {
-    if (!raw) return null;
-    const n = Number(raw);
-    return Number.isFinite(n) ? Math.trunc(n) : null;
+  const commentCache = new Map<string, ClickUpTaskComment[]>();
+  async function getComments(taskId: string): Promise<ClickUpTaskComment[]> {
+    const cached = commentCache.get(taskId);
+    if (cached) return cached;
+    const comments = await deps.clickup.getTaskComments(taskId);
+    commentCache.set(taskId, comments);
+    return comments;
   }
 
   function readBudgetGrossILS(task: { custom_fields?: Array<{ id: string; value?: unknown }> }): number | null {
@@ -95,7 +349,24 @@ export async function computeDashboard(month: YYYYMM, deps: ComputeDashboardDeps
     });
   }
 
-  const financial = computeFinancialMetrics({ month, range, leads, expenses, extraClosedWon });
+  const eventRevenue = await computeMonthlyRevenueFromEventCalendar({
+    range,
+    getComments,
+    eventTasks,
+  });
+
+  const expectedRevenueV2 = await computeExpectedRevenueV2FromEventCalendar({
+    range,
+    getComments,
+    eventTasks,
+  });
+
+  const financialCore = computeFinancialMetrics({ month, range, leads, expenses, extraClosedWon });
+  const financial = {
+    ...financialCore,
+    monthlyRevenue: currencyMetric('clickup', { grossILS: eventRevenue.gross, netILS: eventRevenue.net }, eventRevenue.notes),
+    expectedCashflow: currencyMetric('clickup', { grossILS: expectedRevenueV2.gross, netILS: expectedRevenueV2.net }, expectedRevenueV2.notes),
+  };
   const marketingCore = computeMarketingMetrics({ month, range, leads });
   const sales = computeSalesMetrics({ month, range, leads, monthlyRevenue: financial.monthlyRevenue, extraClosedWonCloseMs });
   const operations = computeOperationsMetrics({ month, range, leads, events, computedAt });

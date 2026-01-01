@@ -11,6 +11,18 @@ function fixtureTasks(fileName: string): ClickUpTask[] {
   return json.tasks;
 }
 
+function fixtureComments(taskId: string): ClickUpTaskComment[] {
+  const p = path.resolve(process.cwd(), 'backend', 'fixtures', 'clickup-task-comments.json');
+  try {
+    const raw = fs.readFileSync(p, 'utf8');
+    const json = JSON.parse(raw) as any;
+    const comments = json?.byTaskId?.[taskId]?.comments;
+    return Array.isArray(comments) ? (comments as ClickUpTaskComment[]) : [];
+  } catch {
+    return [];
+  }
+}
+
 export class MockClickUpClient implements ClickUpClient {
   private readonly tasksByListId: Record<string, ClickUpTask[]>;
 
@@ -22,8 +34,8 @@ export class MockClickUpClient implements ClickUpClient {
     return this.tasksByListId[options.listId] ?? [];
   }
 
-  async getTaskComments(): Promise<ClickUpTaskComment[]> {
-    return [];
+  async getTaskComments(taskId: string): Promise<ClickUpTaskComment[]> {
+    return fixtureComments(taskId);
   }
 }
 

@@ -150,6 +150,8 @@ Done when:
 
 ## F8) Integrity Checks (Zapier Verification)
 
+Stage doc: [stages/F8_SCRIPTS_PAGE.md](stages/F8_SCRIPTS_PAGE.md)
+
 **Goal:** Trust the automation.
 
 Includes:

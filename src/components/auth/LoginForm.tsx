@@ -5,7 +5,6 @@ import { Link, useNavigate } from "react-router-dom";
 
 import { AuthFormWrapper } from "@/components/auth/AuthFormWrapper";
 import { AuthHeading } from "@/components/auth/AuthHeading";
-import { SocialButtons } from "@/components/auth/SocialButtons";
 import { TextField } from "@/components/auth/TextField";
 import { loginUser } from "@/lib/api/auth";
 
@@ -23,7 +22,6 @@ export function LoginForm() {
   const [password, setPassword] = useState("");
   const [errors, setErrors] = useState<LoginErrors>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [socialLoading, setSocialLoading] = useState<"google" | null>(null);
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
@@ -67,13 +65,6 @@ export function LoginForm() {
     }
   };
 
-  const handleGoogleClick = async () => {
-    setSocialLoading("google");
-    await new Promise((resolve) => setTimeout(resolve, 900));
-    console.log("Social auth via google");
-    setSocialLoading(null);
-  };
-
   return (
     <AuthFormWrapper className="space-y-8">
       <AuthHeading
@@ -103,14 +94,6 @@ export function LoginForm() {
             error={errors.password}
             autoComplete="current-password"
           />
-          <div className="flex justify-end">
-            <Link
-              to="/auth/login"
-              className="text-[12px] font-semibold text-[var(--auth-link)]"
-            >
-              Forgot password?
-            </Link>
-          </div>
         </div>
         <button
           type="submit"
@@ -126,12 +109,6 @@ export function LoginForm() {
           <p className="text-[12px] text-[#3a5b22]">{statusMessage}</p>
         ) : null}
       </form>
-      <Divider label="Or" />
-      <SocialButtons
-        loadingTarget={socialLoading}
-        onGoogle={handleGoogleClick}
-        showApple={false}
-      />
       <p className="text-center text-[13px] text-[var(--auth-text-muted)]">
         Don&apos;t have an account?{" "}
         <Link to="/auth/register" className="font-semibold text-[var(--auth-link)]">
@@ -139,17 +116,5 @@ export function LoginForm() {
         </Link>
       </p>
     </AuthFormWrapper>
-  );
-}
-
-function Divider({ label }: { label: string }) {
-  return (
-    <div className="flex items-center gap-4">
-      <span className="h-px flex-1 bg-[var(--auth-stroke)]" />
-      <span className="text-[12px] font-semibold text-[var(--auth-text-strong)]">
-        {label}
-      </span>
-      <span className="h-px flex-1 bg-[var(--auth-stroke)]" />
-    </div>
   );
 }

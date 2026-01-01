@@ -4,10 +4,17 @@ import path from 'node:path';
 const isDev = !app.isPackaged;
 
 function createWindow() {
+  // In dev: __dirname is <repo>/dist/electron
+  // In prod: __dirname is inside the packaged app at <...>/dist/electron
+  const iconPath = isDev
+    ? path.join(__dirname, '..', '..', 'public', 'images', 'app-icons', 'app.ico')
+    : path.join(__dirname, '..', 'renderer', 'images', 'app-icons', 'app.ico');
+
   const win = new BrowserWindow({
     width: 1200,
     height: 800,
     show: false,
+    icon: iconPath,
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
     },

@@ -8,8 +8,8 @@ import { triggerRefresh } from '@/lib/api/refresh';
 import { Toolbar } from '@/components/ui/Toolbar';
 import { SectionCard } from '@/components/ui/SectionCard';
 import { KpiTile } from '@/components/ui/KpiTile';
-import type { DensityMode } from '@/ui/density';
 import { densityGaps } from '@/ui/density';
+import { LogoLoading } from '@/components/ui/LogoLoading';
 
 function formatILS(value: number | null | undefined) {
   if (value == null) return '—';
@@ -138,7 +138,12 @@ export function DashboardPage() {
   const [refreshState, setRefreshState] = useState<{ status: 'idle' | 'running' | 'ok' | 'error'; message?: string }>(
     () => ({ status: 'idle' }),
   );
-  const [density, setDensity] = useState<DensityMode>('comfortable');
+
+  const [refreshOverlay, setRefreshOverlay] = useState<{ visible: boolean; loading: boolean; message: string }>(() => ({
+    visible: false,
+    loading: true,
+    message: 'Refreshing dashboard…',
+  }));
 
   const latest = state.status === 'ready' ? state.data : null;
   const metrics = latest?.metrics ?? null;
@@ -146,18 +151,28 @@ export function DashboardPage() {
   const kpis = useMemo(() => (metrics ? buildKpis(metrics) : null), [metrics]);
 
   const onRefresh = async () => {
+    setRefreshOverlay({ visible: true, loading: true, message: 'Refreshing dashboard…' });
     setRefreshState({ status: 'running' });
     try {
       const result = await triggerRefresh();
       if (!result.ok) {
+        setRefreshOverlay({ visible: false, loading: true, message: 'Refreshing dashboard…' });
         setRefreshState({ status: 'error', message: result.code ? `${result.message} (${result.code})` : result.message });
         return;
       }
       setRefreshState({ status: 'ok', message: `Refresh started (job ${result.jobId})` });
     } catch (e) {
       const err = e as Error;
+      setRefreshOverlay({ visible: false, loading: true, message: 'Refreshing dashboard…' });
       setRefreshState({ status: 'error', message: err.message || 'Refresh failed' });
+      return;
     }
+
+    // Let the logo transition to "loaded" (color/scale) before returning control.
+    setRefreshOverlay({ visible: true, loading: false, message: 'Loading dashboard…' });
+    window.setTimeout(() => {
+      setRefreshOverlay({ visible: false, loading: true, message: 'Refreshing dashboard…' });
+    }, 500);
   };
 
   if (!firebaseEnabled) {
@@ -169,11 +184,17 @@ export function DashboardPage() {
     );
   }
 
-  const gaps = densityGaps(density);
+  const gaps = densityGaps('comfortable');
   const refreshDisabled = refreshState.status === 'running' || state.status === 'disabled';
 
   return (
     <div className={gaps.page}>
+      {refreshOverlay.visible ? (
+        <div className="fixed inset-0 z-50">
+          <LogoLoading loading={refreshOverlay.loading} message={refreshOverlay.message} />
+        </div>
+      ) : null}
+
       <Toolbar
         title="Dashboard"
         subtitle={
@@ -183,8 +204,6 @@ export function DashboardPage() {
             {latest?.month ? <span className="text-slate-600">Month: {latest.month}</span> : null}
           </>
         }
-        density={density}
-        onDensityChange={setDensity}
         actions={
           <div className="flex items-center gap-3">
             {refreshState.status === 'error' ? <span className="text-sm text-red-600">{refreshState.message}</span> : null}

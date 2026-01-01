@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 
-const DEFAULT_IMAGE = "/pic-for-login.svg";
+const DEFAULT_IMAGE = "/images/auth/auth-hero.png";
 
 type AuthLayoutProps = {
   children: ReactNode;
@@ -43,14 +43,6 @@ export function AuthLayout({
             </div>
             <div className="absolute inset-0 border-l border-white/30" />
             <div className="absolute inset-0 bg-gradient-to-r from-black/10 via-transparent to-transparent" />
-            <div className="absolute bottom-10 left-10 max-w-xs rounded-2xl bg-white/15 p-5 text-white backdrop-blur-md">
-              <p className="text-sm tracking-wide">
-                &ldquo;We design convivial spaces for bold hosts and their favorite people.&rdquo;
-              </p>
-              <p className="mt-4 text-xs uppercase tracking-[0.2em] text-white/70">
-                Ziv Collective · Since 2019
-              </p>
-            </div>
           </div>
         </div>
       </div>

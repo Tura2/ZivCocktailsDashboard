@@ -148,20 +148,20 @@ Done when:
 
 ---
 
-## F8) Integrity Checks (Zapier Verification)
+## F8) Scripts Page (Operational Jobs)
 
 Stage doc: [stages/F8_SCRIPTS_PAGE.md](stages/F8_SCRIPTS_PAGE.md)
 
-**Goal:** Trust the automation.
+**Goal:** Run operational jobs safely from the app.
 
 Includes:
-- Verification jobs
-- Cross-list checks
-- Duplicate detection
-- Log output
+- Scripts page in the renderer
+- Trigger Cloud Functions jobs (income/expenses sync)
+- Auth + allowlist enforcement
+- Clear success/failure feedback
 
 Done when:
-- Script page shows pass/fail + logs
+- Scripts page can run jobs and show success/failure
 
 ---
 

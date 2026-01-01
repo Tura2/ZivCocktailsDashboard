@@ -12,6 +12,28 @@ Provide an in-app **Scripts** page (Electron renderer) that can securely trigger
 - Auth + allowlist identical to `/refresh`.
 - Local persistence on the machine (last run timestamp + last status).
 
+## Implementation map
+
+- Renderer UI: `src/pages/ScriptsPage.tsx`
+- Renderer API client: `src/lib/api/sync.ts`
+- Cloud Functions HTTP entrypoints:
+  - `functions/src/syncIncome.ts`
+  - `functions/src/syncExpenses.ts`
+- Core sync logic:
+  - `functions/src/sync/income.ts`
+  - `functions/src/sync/expenses.ts`
+
+## Renderer configuration
+
+Required `.env` values for the renderer:
+
+- `VITE_SYNC_INCOME_URL`
+- `VITE_SYNC_EXPENSES_URL`
+
+Optional dev helper (mirrors `/refresh` behavior):
+
+- `VITE_DEV_EMAIL`
+
 ## Architecture
 
 1) Electron (renderer) calls `POST /syncIncome` or `POST /syncExpenses` with a Firebase ID token.
@@ -31,6 +53,12 @@ Provide an in-app **Scripts** page (Electron renderer) that can securely trigger
 - Secrets:
   - `CLICKUP_API_TOKEN`
   - `ICOUNT_TOKEN`
+
+## Security model
+
+- Renderer sends `Authorization: Bearer <Firebase ID token>`.
+- Functions validate the ID token and enforce allowlist (`access/allowlist` → field `emails`).
+- No ClickUp/iCount secrets exist in the renderer.
 
 ## Local persistence (renderer)
 
@@ -70,3 +98,10 @@ Shape:
   - Local “Last ran locally” persists after app restart.
 - Non-allowlisted:
   - Run attempt shows “No access (not allowlisted)”.
+
+## Done when
+
+- Scripts page is accessible in-app (authenticated route).
+- Clicking each script triggers the correct Cloud Function endpoint.
+- UI clearly shows `Running` → `Success/Failed`.
+- Last-run timestamp and last status persist across app restarts.

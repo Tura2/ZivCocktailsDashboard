@@ -44,6 +44,7 @@ export function AppShellLayout() {
             <nav className="ml-4 flex items-center gap-1 rounded-xl bg-slate-50 p-1">
               <NavItem to="/dashboard" label="Dashboard" />
               <NavItem to="/history" label="History" />
+              <NavItem to="/salaries" label="Salaries" />
               <NavItem to="/scripts" label="Scripts" />
             </nav>
           </div>

@@ -23,8 +23,10 @@ async function main(): Promise<void> {
 
   const igToken = process.env.INSTAGRAM_ACCESS_TOKEN;
   const igUserId = process.env.INSTAGRAM_IG_USER_ID;
+  const igHostRaw = (process.env.INSTAGRAM_GRAPH_HOST ?? '').trim().toLowerCase();
+  const igHost = igHostRaw === 'instagram' || igHostRaw === 'graph.instagram.com' ? 'graph.instagram.com' : igHostRaw === 'facebook' || igHostRaw === 'graph.facebook.com' ? 'graph.facebook.com' : undefined;
 
-  const instagram = igToken && igUserId ? new InstagramGraphClient({ accessToken: igToken, igUserId }) : undefined;
+  const instagram = igToken && igUserId ? new InstagramGraphClient({ accessToken: igToken, igUserId, host: igHost }) : undefined;
 
   const result = await computeDashboard(month, {
     clickup,

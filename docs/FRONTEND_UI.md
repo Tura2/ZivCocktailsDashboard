@@ -41,7 +41,7 @@ Implementation: [src/ui/categoryTheme.ts](../src/ui/categoryTheme.ts).
   - Many pages use the shared `Card` UI primitive (white surface + subtle border + soft shadow).
   - Some pages also render simple “card-like” blocks using Tailwind directly (rounded corners, `bg-white`, and subtle borders).
 - Controls: consistent rounded corners (`rounded-lg`) with subtle borders; hover states add light gray backgrounds.
-- Density: Dashboard + History include a UI-only toggle (Comfortable vs Compact) that changes spacing.
+- Density: Dashboard includes a UI-only toggle (Comfortable vs Compact) that changes spacing.
 
 ### Auth pages (Login / Register)
 
@@ -187,7 +187,8 @@ Month selection UI
 - A sticky filter bar with two dropdowns:
   - Start month
   - End month
-- Leaving both blank defaults the view to the most recent months.
+- Leaving both blank defaults the view to the current year (e.g. 2026).
+- Month dropdown options default to the current year; you can optionally include the previous year (e.g. 2025).
 - A Reset button clears the selection.
 
 Trends

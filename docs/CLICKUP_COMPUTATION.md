@@ -196,22 +196,36 @@ Computed in `backend/metrics/marketing.ts` from `NormalizedLead`.
 
 ### Financial
 
-Computed in `backend/metrics/financial.ts` from `NormalizedLead` + `NormalizedExpense`.
+Financial metrics are computed from a mix of:
+
+- `NormalizedLead` / `NormalizedExpense` (classic v1 metrics)
+- **Event Calendar tasks + ClickBot comments** for the most important revenue metrics
+
+The orchestration point is `backend/dashboard/computeDashboard.ts`, which may override some v1 values with Event Calendar–derived calculations.
 
 VAT handling:
 
 - Values marked as gross are converted to `{grossILS, netILS}` via `ensureNetGross` (VAT 18%).
 
-- `financial.monthlyRevenue`
-  - Source: ClickUp (Incoming Leads)
-  - Included leads:
-    - `status == Closed Won`
-    - close date is within the month
-  - Close date resolution:
-    - `date_closed` if present
-    - else `date_updated` as a proxy (note recorded)
-  - Amount used:
-    - `budgetGrossILS` (Budget) treated as gross ILS
+#### `financial.monthlyRevenue` (current)
+
+**Source:** ClickUp (Event Calendar + task comments)
+
+This is computed from Event Calendar tasks using a two-part recognition model:
+
+- **Deposit**: recognized in the month of the *deposit-paid* comment timestamp.
+  - The amount comes from a Deposit field (name-matched, with a fallback to the existing `Paid Amount` field ID).
+  - Trigger comment examples include Hebrew/English deposit-paid messages.
+
+- **Balance**: recognized in the month of the *first* ClickBot status-change comment to DONE.
+  - Uses the ClickBot comment: `Status has changed to : DONE`.
+  - The amount comes from a Balance Due field (name-matched).
+  - Uses the first DONE transition to avoid double counting if the task is reverted and later set to DONE again.
+
+This logic lives in:
+
+- Revenue aggregation: `backend/dashboard/computeDashboard.ts`
+- Comment parsing: `backend/clickup/comments.ts`
 
 #### Automation note: Closed Won moved to Event Calendar
 
@@ -228,18 +242,27 @@ To keep metrics correct, the engine uses ClickUp task comments as a source of tr
 - The comment timestamp is treated as an **effective close date** for that deal.
 - That deal is then injected into metrics via the optional `extraClosedWon`/`extraClosedWonCloseMs` inputs.
 
-- `financial.expectedCashflow`
-  - Source: ClickUp (Incoming Leads)
-  - Excludes: leads where `status == Billing`
-  - Uses:
-    - `requestedDateMs` as event date proxy
-    - `paidAmountGrossILS` as deposit (gross)
-    - close date (`date_closed` else `date_updated`) as “deposit date proxy”
-    - `budgetGrossILS` as full amount (gross)
-  - Inclusion rules (gross amounts, then VAT conversion):
-    1. If event is in month AND deposit paid in month → include **full** budget
-    2. If event is in month AND deposit was paid before this month → include **full minus deposit already paid**
-    3. If event is NOT in month AND deposit paid in month → include **deposit only**
+#### `financial.expectedCashflow` (current: Expected Revenue v2.0)
+
+**Source:** ClickUp (Event Calendar + task comments)
+
+This is an "Expected Revenue" view computed as:
+
+- **A) Deposits in the month**
+  - Deposit is attributed by the deposit-paid comment timestamp.
+
+- **B) Scheduled balances for events in the month**
+  - Uses `requestedDate` as the event month.
+  - Excludes tasks whose current status is `Billing`.
+
+- **C) Billing release balances in the month**
+  - If the task transitions **Billing → Done** in the month, include the Balance Due.
+  - The transition is detected by ordering ClickBot “Status has changed to : <X>” comments and finding the first observed Billing → Done sequence.
+
+**Deduplication**
+- If a task has any Billing → Done transition recorded, it is excluded from (B) to prevent counting both scheduled + released.
+
+This logic lives in `backend/dashboard/computeDashboard.ts`, with status-history parsing helpers in `backend/clickup/comments.ts`.
 
 - `financial.expectedExpenses`
   - Source: ClickUp (Expenses)

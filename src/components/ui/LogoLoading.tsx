@@ -1,5 +1,7 @@
 import React from 'react';
 
+const DEFAULT_LOGO_SRC = `${import.meta.env.BASE_URL}applogo-rounded.png`;
+
 export type LogoLoadingProps = {
   loading: boolean;
   /** Tailwind size class for the logo box (defaults to 256px). */
@@ -13,8 +15,8 @@ export type LogoLoadingProps = {
 
 export function LogoLoading({
   loading,
-  sizeClassName = 'h-80 w-80',
-  src = '/applogo-rounded.png',
+  sizeClassName = 'h-112 w-112',
+  src = DEFAULT_LOGO_SRC,
   alt = 'Ziv Cocktails',
   message,
   fullscreen = true,
@@ -40,7 +42,7 @@ export function LogoLoading({
         />
 
         {message ? (
-          <div className="max-w-md text-sm font-semibold tracking-tight text-slate-700">
+          <div className="max-w-md text-base font-semibold tracking-tight text-slate-700">
             {message}
           </div>
         ) : null}

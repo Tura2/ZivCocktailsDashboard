@@ -7,6 +7,9 @@ This file is a build sequence checklist. It complements (but does not replace):
 - Metric definitions: [METRICS_SPEC.md](METRICS_SPEC.md)
 - ClickUp contract: [DATA_CONTRACT.md](DATA_CONTRACT.md)
 
+Deployment readiness:
+- Pre-deploy blockers checklist: [PRE_DEPLOYMENT_BLOCKERS.md](PRE_DEPLOYMENT_BLOCKERS.md)
+
 ---
 
 ## F0) Foundation & Guardrails (Non-negotiable)

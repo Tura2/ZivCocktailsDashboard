@@ -1,0 +1,31 @@
+appId: com.zivcocktails.dashboard
+productName: Ziv Cocktails Dashboard
+
+# Put outputs under ./release (as requested)
+directories:
+  output: release
+
+# Only ship the compiled bundles
+files:
+  - dist/electron/**
+  - dist/renderer/**
+
+# Ensure Electron's entrypoint points at the compiled main
+extraMetadata:
+  main: dist/electron/main.js
+
+win:
+  target:
+    - target: nsis
+      arch:
+        - x64
+    - target: portable
+      arch:
+        - x64
+  icon: build/icon.ico
+
+# Optional NSIS UX toggles
+nsis:
+  oneClick: false
+  perMachine: false
+  allowToChangeInstallationDirectory: true

@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 
-const DEFAULT_IMAGE = "/images/auth/auth-hero.png";
+const DEFAULT_IMAGE = `${import.meta.env.BASE_URL}images/auth/auth-hero.png`;
 
 type AuthLayoutProps = {
   children: ReactNode;

@@ -365,7 +365,11 @@ export function HistoryPage() {
   const { state } = useSnapshots({ limit: MAX_MONTHS_TO_FETCH });
   const [startMonth, setStartMonth] = useState<YYYYMM | ''>('');
   const [endMonth, setEndMonth] = useState<YYYYMM | ''>('');
-  const [density, setDensity] = useState<DensityMode>('comfortable');
+  const density: DensityMode = 'comfortable';
+  const now = new Date();
+  const currentYear = now.getFullYear();
+  const previousYear = currentYear - 1;
+  const [includePreviousYear, setIncludePreviousYear] = useState(false);
   const [openMonth, setOpenMonth] = useState<YYYYMM | null>(null);
   const [exportState, setExportState] = useState<
     | { status: 'idle' }
@@ -383,17 +387,31 @@ export function HistoryPage() {
     return months;
   }, [snapshots]);
 
+  useEffect(() => {
+    if (startMonth.startsWith(`${previousYear}-`) || endMonth.startsWith(`${previousYear}-`)) {
+      setIncludePreviousYear(true);
+    }
+  }, [startMonth, endMonth, previousYear]);
+
+  const availableMonthsForPickerAsc = useMemo(() => {
+    const yearPrefixes = includePreviousYear ? [`${previousYear}-`, `${currentYear}-`] : [`${currentYear}-`];
+    return availableMonthsAsc.filter((m) => yearPrefixes.some((p) => m.startsWith(p)));
+  }, [availableMonthsAsc, includePreviousYear, previousYear, currentYear]);
+
   const viewMonthsDesc = useMemo(() => {
     if (state.status !== 'ready') return [] as YYYYMM[];
 
     const hasSelection = Boolean(startMonth || endMonth);
     if (!hasSelection) {
-      const recentDocs = snapshots.slice(0, DEFAULT_RECENT_MONTHS);
-      const months = recentDocs.map((s) => s.month);
-      if (months.length <= 1) return months;
-      const newest = months[0];
-      const oldest = months[months.length - 1];
-      return listMonthsInclusive(oldest, newest).reverse();
+      const yearPrefix = `${currentYear}-`;
+      const yearMonthsDesc = snapshots.map((s) => s.month).filter((m) => m.startsWith(yearPrefix));
+      if (yearMonthsDesc.length >= 2) {
+        const newest = yearMonthsDesc[0];
+        const oldest = yearMonthsDesc[yearMonthsDesc.length - 1];
+        return listMonthsInclusive(oldest, newest).reverse();
+      }
+      if (yearMonthsDesc.length === 1) return yearMonthsDesc;
+      return [] as YYYYMM[];
     }
 
     const s = (startMonth || endMonth) as YYYYMM;
@@ -489,8 +507,6 @@ export function HistoryPage() {
             <span className="font-mono text-[12px]">diffFromPreviousPct</span>.
           </>
         }
-        density={density}
-        onDensityChange={setDensity}
         actions={
           <>
             {exportState.status === 'running' ? (
@@ -506,10 +522,23 @@ export function HistoryPage() {
         <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
           <div>
             <div className="text-sm font-semibold text-slate-900">Month range</div>
-            <div className="mt-1 text-sm text-slate-600">Choose a single month or a range. Leave blank to show the most recent {DEFAULT_RECENT_MONTHS} months.</div>
+            <div className="mt-1 text-sm text-slate-600">
+              Default view shows {currentYear} only. Choose a single month or a range, or include {previousYear}.
+            </div>
           </div>
 
           <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+            <label className="flex items-center gap-2 text-sm text-slate-600">
+              <input
+                type="checkbox"
+                className="h-4 w-4 rounded border-slate-300"
+                checked={includePreviousYear}
+                onChange={(e) => setIncludePreviousYear(e.target.checked)}
+                disabled={state.status !== 'ready'}
+              />
+              <span>Include {previousYear}</span>
+            </label>
+
             <label className="flex items-center gap-2 text-sm text-slate-600">
               <span className="w-16">Start</span>
               <select
@@ -519,7 +548,7 @@ export function HistoryPage() {
                 disabled={state.status !== 'ready'}
               >
                 <option value="">(auto)</option>
-                {availableMonthsAsc.map((m) => (
+                {availableMonthsForPickerAsc.map((m) => (
                   <option key={m} value={m}>
                     {m}
                   </option>
@@ -536,7 +565,7 @@ export function HistoryPage() {
                 disabled={state.status !== 'ready'}
               >
                 <option value="">(same as start)</option>
-                {availableMonthsAsc.map((m) => (
+                {availableMonthsForPickerAsc.map((m) => (
                   <option key={m} value={m}>
                     {m}
                   </option>

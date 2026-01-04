@@ -4,11 +4,12 @@
 
 F6 adds a **History** page (`/history`) that reads monthly snapshot documents from Firestore (`snapshots/{YYYY-MM}`) and renders:
 
-- A default “recent months” view
+- A default “current year only” view (e.g. 2026)
 - Simple month selection (single month or inclusive range)
 - KPI groups per month (Financial / Marketing / Sales / Operations)
 - Month-over-month (MoM) percentage diffs using the snapshot’s stored `diffFromPreviousPct`
 - Trend charts derived from snapshot metrics
+- Snapshot export for a selected month (CSV / XLSX / PDF)
 
 This stage is **read-only**: it performs **no Firestore writes** and does **no recomputation** of metrics or diffs.
 
@@ -19,10 +20,11 @@ This stage is **read-only**: it performs **no Firestore writes** and does **no r
 **Goals**
 
 - Use `snapshots/*` as the **source of truth** for monthly history.
-- Show the most recent N months by default (implemented as N=6).
+- Show the current year by default (e.g. 2026).
 - Allow selecting:
   - A single month
   - An inclusive month range
+- Allow optionally including the previous year (e.g. 2025) in the month dropdowns.
 - Display MoM diffs using **stored** `diffFromPreviousPct` (do not recompute).
 - Render:
   - At least one line chart from snapshots
@@ -35,7 +37,7 @@ This stage is **read-only**: it performs **no Firestore writes** and does **no r
 
 **Non-Goals (explicitly out of scope for F6)**
 
-- Exports (CSV / Excel / PDF)
+- (none)
 - Any backend changes, scheduling, or refresh orchestration
 - Any client-side recomputation of metrics or diffs
 - Any Firestore writes from the client
@@ -77,6 +79,7 @@ Notes:
 - Two dropdowns:
   - Start month
   - End month (defaults to same as start)
+- Month dropdowns default to the current year only; a checkbox allows including the previous year.
 - Reset button
 
 **Trends section**

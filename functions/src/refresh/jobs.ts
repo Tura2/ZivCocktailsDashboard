@@ -79,3 +79,32 @@ export async function markJobError(jobId: string, message: string, code?: string
     error,
   });
 }
+
+export async function pruneOldJobs(keepLatest = 10): Promise<number> {
+  if (!Number.isFinite(keepLatest) || keepLatest < 1) {
+    throw new Error('keepLatest must be a positive number');
+  }
+
+  const col = getDb().collection('jobs');
+
+  const keepSnap = await col.orderBy('startedAt', 'desc').limit(keepLatest).get();
+  const lastKept = keepSnap.docs[keepSnap.docs.length - 1];
+  if (!lastKept) return 0;
+
+  let deleted = 0;
+
+  // Delete in pages to keep batches small and avoid long runtime.
+  while (true) {
+    const oldSnap = await col.orderBy('startedAt', 'desc').startAfter(lastKept).limit(200).get();
+    if (oldSnap.empty) break;
+
+    const batch = getDb().batch();
+    for (const doc of oldSnap.docs) {
+      batch.delete(doc.ref);
+      deleted += 1;
+    }
+    await batch.commit();
+  }
+
+  return deleted;
+}

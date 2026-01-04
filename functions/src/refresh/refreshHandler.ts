@@ -1,7 +1,7 @@
 import type { Request, Response } from 'express';
 import { requireAllowlistedCaller } from './authz';
 import { AlreadyRunningError, HttpError } from './errors';
-import { newJobId, createJob, appendJobLog, markJobError, markJobSuccess } from './jobs';
+import { newJobId, createJob, appendJobLog, markJobError, markJobSuccess, pruneOldJobs } from './jobs';
 import { acquireRefreshLock, releaseRefreshLock } from './lock';
 import { runRefresh } from './runRefresh';
 
@@ -66,6 +66,15 @@ export async function refreshHandler(req: Request, res: Response): Promise<void>
 
     await markJobSuccess(jobId, result.writtenSnapshots, result.skippedSnapshots);
 
+    try {
+      const deleted = await pruneOldJobs(10);
+      if (deleted > 0) {
+        await appendJobLog(jobId, `Pruned ${deleted} old job(s) (keepLatest=10)`);
+      }
+    } catch (e) {
+      await appendJobLog(jobId, `Warning: failed to prune old jobs: ${(e as Error).message}`);
+    }
+
     res.status(200).json({
       jobId,
       status: 'success',
@@ -76,6 +85,15 @@ export async function refreshHandler(req: Request, res: Response): Promise<void>
   } catch (e) {
     const err = e as Error;
     await markJobError(jobId, err.message, (e as any)?.code);
+
+    try {
+      const deleted = await pruneOldJobs(10);
+      if (deleted > 0) {
+        await appendJobLog(jobId, `Pruned ${deleted} old job(s) (keepLatest=10)`);
+      }
+    } catch {
+      // Best-effort cleanup; ignore.
+    }
 
     if (e instanceof HttpError) {
       res.status(e.status).json({ error: { message: e.message, code: e.code } });

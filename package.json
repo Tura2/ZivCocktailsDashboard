@@ -1,7 +1,7 @@
 {
   "name": "ziv-cocktails-dashboard",
   "private": true,
-  "version": "0.0.9",
+  "version": "1.0.0",
   "type": "commonjs",
   "author": "Offir Tura",
   "main": "dist/electron/main.js",

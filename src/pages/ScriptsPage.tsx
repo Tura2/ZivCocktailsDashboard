@@ -78,6 +78,7 @@ function ScriptCard(props: {
   onRun: () => void;
   disabled: boolean;
 }) {
+  const isRunning = props.runtimeStatus === 'running';
   return (
     <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
       <div className="flex items-start justify-between gap-3">
@@ -95,11 +96,15 @@ function ScriptCard(props: {
         </div>
 
         <button
-          className="rounded-lg bg-slate-900 px-3 py-2 text-sm font-medium text-white shadow-sm transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60"
+          aria-busy={isRunning}
+          className={[
+            'rounded-lg px-3 py-2 text-sm font-medium shadow-sm transition disabled:cursor-not-allowed disabled:opacity-60',
+            isRunning ? 'bg-slate-200 text-slate-700 animate-pulse' : 'bg-slate-900 text-white hover:bg-slate-800',
+          ].join(' ')}
           onClick={props.onRun}
           disabled={props.disabled}
         >
-          Run
+          {isRunning ? 'Running…' : 'Run'}
         </button>
       </div>
 

@@ -186,45 +186,35 @@ export async function runRefresh(input: RunRefreshInput): Promise<RunRefreshResu
     }
   }
 
-  // Explicitly ensure targetMonth is reported as skipped if it already exists.
-  // This supports idempotent re-runs where missingMonths=[] (lastSnapshotMonth >= targetMonth).
-  if (!missingMonths.includes(targetMonth)) {
+  // Always overwrite snapshots/targetMonth so History reflects the latest refreshed metrics.
+  // (Using create() makes snapshots immutable and causes History to drift from dashboard/latest.)
+  {
     const ref = getDb().collection('snapshots').doc(targetMonth);
-    const existing = await ref.get();
-    if (existing.exists) {
-      skippedSnapshots.push(targetMonth);
-      await input.log(`Skip snapshots/${targetMonth} (already exists)`);
-    } else {
-      // Create a single snapshot record for targetMonth.
-      const prevMonth = engineMonthLogic.addMonths(targetMonth, -1);
-      const prevMetrics = await tryReadSnapshotMetrics(prevMonth);
+    const prevMonth = engineMonthLogic.addMonths(targetMonth, -1);
+    const prevMetrics = await tryReadSnapshotMetrics(prevMonth);
 
-      const [rec] = await engineSnapshots.generateSnapshotRecords({
-        months: [targetMonth],
-        computedAt: now,
-        previousSnapshot: prevMetrics ? { month: prevMonth, metrics: prevMetrics } : undefined,
-        computeDashboard: (month: string) => engineComputeDashboard.computeDashboard(month, { clickup, instagram, computedAt: now }),
-      });
+    const [rec] = await engineSnapshots.generateSnapshotRecords({
+      months: [targetMonth],
+      computedAt: now,
+      previousSnapshot: prevMetrics ? { month: prevMonth, metrics: prevMetrics } : undefined,
+      computeDashboard: (month: string) => engineComputeDashboard.computeDashboard(month, { clickup, instagram, computedAt: now }),
+    });
 
-      try {
-        await ref.create({
-          version: 'v1',
-          month: targetMonth,
-          computedAt: rec.computedAt,
-          metrics: rec.metrics,
-          diffFromPreviousPct: rec.diffFromPreviousPct,
-        });
-        writtenSnapshots.push(targetMonth);
-        await input.log(`Wrote snapshots/${targetMonth}`);
-      } catch (e) {
-        if (isAlreadyExistsError(e)) {
-          skippedSnapshots.push(targetMonth);
-          await input.log(`Skip snapshots/${targetMonth} (already exists)`);
-        } else {
-          throw e;
-        }
-      }
+    await ref.set(
+      {
+        version: 'v1',
+        month: targetMonth,
+        computedAt: rec.computedAt,
+        metrics: rec.metrics,
+        diffFromPreviousPct: rec.diffFromPreviousPct,
+      },
+      { merge: false },
+    );
+
+    if (!writtenSnapshots.includes(targetMonth)) {
+      writtenSnapshots.push(targetMonth);
     }
+    await input.log(`Upsert snapshots/${targetMonth}`);
   }
 
   // dashboard/latest always overwritten with targetMonth metrics

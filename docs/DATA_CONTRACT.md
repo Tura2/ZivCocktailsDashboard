@@ -20,6 +20,7 @@ Related docs:
 |------|---------|----|
 | Leads / Deals | Incoming Leads | 901214362127 |
 | Events | Event Calendar | 901214362128 |
+| HR / Payroll | Staff Directory | 901214362129 |
 | Expenses | Expenses | 901214544874 |
 | Income Docs | Income (Invoices) | 901214544871 |
 
@@ -46,6 +47,16 @@ Related docs:
 - Inherits most space fields
 - Status lifecycle:
   - booked → staffing → logistics → ready → done → billing
+
+### 3.1 Payroll / Salaries fields
+
+These are used by the Salaries module (see [EMPLOYER_EVENTS_CALC.md](EMPLOYER_EVENTS_CALC.md)).
+
+| Logical Name | Field Name | Field ID | Type |
+|------------|-----------|---------|------|
+| assignedStaff | Assigned Staff | 61f29c83-d538-4d62-97bb-c221572d2c47 | relationship |
+| requestedDate | Requested Date | 1660701a-1263-41cf-bb7a-79e3c3638aa3 | date |
+| recommendation | Recommendation | f11a51df-9a01-4eea-8d2f-dab88217d985 | checkbox |
 
 ---
 

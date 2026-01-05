@@ -12,6 +12,7 @@ Script: `HR/staff/calc_employer_events_per_month.py`
 - **Event Calendar custom field IDs**
   - Assigned Staff: `61f29c83-d538-4d62-97bb-c221572d2c47`
   - Requested Date: `1660701a-1263-41cf-bb7a-79e3c3638aa3`
+  - Recommendation: `f11a51df-9a01-4eea-8d2f-dab88217d985`
 
 ## Data Source
 
@@ -27,6 +28,9 @@ The script reads tasks from the **ClickUp “Event Calendar” list** and uses t
   - If `Requested Date` is missing, the event is not counted.
 - **Event status**: must be `done` (case-insensitive)
   - Only events whose status name equals `done` are counted.
+- **Recommendation field**: `Recommendation`
+  - Checkbox on the Event Calendar task.
+  - Included per event as `recommendation: true/false/null`.
 
 ## ClickUp API Endpoints Used
 
@@ -86,6 +90,8 @@ For each Event Calendar task:
 6. **Output**
    - Produces rows with:
      - `staff_name`, `staff_task_id`, `month`, `event_count`
+     - `events`: list of event objects:
+       - `event_id`, `name`, `requested_date` (local ISO), `recommendation`
    - Output format can be CSV (default) or JSON.
 
 ## CLI Options (Common)

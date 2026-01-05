@@ -187,6 +187,48 @@ It has a TTL so a crash won’t block refresh forever.
 
 ---
 
+### 3.5 `employees/*` (Payroll / Salaries)
+
+The Salaries module persists per-employee defaults and per-month payment snapshots.
+
+Important:
+- The client UI does **not** write Firestore directly.
+- Cloud Functions (Admin SDK) are the only writers.
+- Access to call the HTTP functions is gated by the same allowlist model:
+  - `access/allowlist` with field `emails: string[]`
+
+Collections:
+
+- `employees/{staffTaskId}`
+  - Stores per-employee defaults.
+  - Fields:
+    - `baseRate: number`
+
+- `employees/{staffTaskId}/payments/{YYYY_MM}`
+  - Stores the monthly snapshot (doc id uses underscore, e.g. `2026_01`).
+  - Fields include:
+    - `month: 'YYYY-MM'`
+    - `baseRate: number`
+    - `videosCount: number`
+    - `bonus: number`
+    - `eventCount: number`
+    - `eventsTotal: number`
+    - `videosTotal: number`
+    - `total: number`
+    - `events: Array<{ taskId: string; name: string; requestedDateMs: number; recommendation: boolean | null }>`
+    - `status: 'unpaid' | 'partial' | 'paid'`
+    - `updatedAt: string` (ISO)
+
+Notes:
+- `videosCount` is a user-editable value stored in the monthly payment snapshot.
+- If a month has no saved snapshot yet, the `salaries` HTTP function defaults `videosCount` from ClickUp by counting events where the Event Calendar `Recommendation` checkbox is checked.
+
+Do you need to create anything manually?
+- No: Firestore is schemaless; the functions will create these docs on first Save.
+- Optional: if you want default rates pre-populated before anyone presses Save, you can seed `employees/{staffTaskId}.baseRate`.
+
+---
+
 ## 4) How snapshot months are chosen
 
 Refresh chooses a `targetMonth`:

@@ -5,6 +5,7 @@ export const CLICKUP = {
   lists: {
     incomingLeads: '901214362127',
     eventCalendar: '901214362128',
+    staffDirectory: '901214362129',
     expenses: '901214544874',
   },
   fields: {
@@ -13,6 +14,8 @@ export const CLICKUP = {
     eventType: '4be9eb02-cdd2-41cd-9d8e-252cf488785d',
     budget: '09a72b8e-b74a-4034-8aff-f1b683c51650',
     requestedDate: '1660701a-1263-41cf-bb7a-79e3c3638aa3',
+    assignedStaff: '61f29c83-d538-4d62-97bb-c221572d2c47',
+    recommendation: 'f11a51df-9a01-4eea-8d2f-dab88217d985',
     source: 'c49330f0-35a0-4177-92ff-854655a7fc55',
     lossReason: 'c4c93671-a537-471b-80ae-0790d1fc2e84',
     participants: 'b31123ca-8aef-48b6-8f52-2bec892c70e8',

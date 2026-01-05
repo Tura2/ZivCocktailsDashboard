@@ -168,7 +168,26 @@ Done when:
 
 ---
 
-## F9) Polishing & Hardening
+## F9) Payroll & Salaries
+
+Stage doc: [stages/F9_PAYROLL_AND_SALARIES.md](stages/F9_PAYROLL_AND_SALARIES.md)
+
+**Goal:** Monthly payroll per staff member.
+
+Includes:
+- Salaries page (collapse cards)
+- ClickUp read (Staff Directory + Event Calendar)
+- Monthly events-per-staff computation
+- Firestore persistence for employee defaults + monthly payment snapshots
+
+Done when:
+- Salaries page shows each employee with monthly totals
+- Edit + Save persists base rate + monthly snapshot
+- Save with no changes performs no write
+
+---
+
+## F10) Polishing & Hardening
 
 **Goal:** Production-ready.
 

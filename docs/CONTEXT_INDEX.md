@@ -43,6 +43,7 @@ This repository uses a small set of Markdown docs as the “source of truth” f
 - F1 compute engine (backend-only): [stages/F1_CLOUD_DATA_ENGINE.md](stages/F1_CLOUD_DATA_ENGINE.md)
 - F2 snapshot engine (engine-only; persistence happens in F3): [stages/F2_SNAPSHOT_ENGINE.md](stages/F2_SNAPSHOT_ENGINE.md)
 - F3 persistence layer (Firestore writes via Functions): [stages/F3_FIRESTORE_PERSISTENCE.md](stages/F3_FIRESTORE_PERSISTENCE.md)
+- F9 payroll & salaries (ClickUp staff + monthly payments): [stages/F9_PAYROLL_AND_SALARIES.md](stages/F9_PAYROLL_AND_SALARIES.md)
 
 ## Ground rules (quick)
 

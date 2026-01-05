@@ -73,6 +73,7 @@ Auth styling is defined by a mix of CSS variables (in [src/styles/globals.css](.
     - `#/dashboard`
     - `#/history`
     - `#/scripts`
+    - `#/salaries`
   - Unknown routes redirect to `#/auth/login`.
 
 The router is wrapped by an error boundary in [src/App.tsx](../src/App.tsx), so render-time errors show a dedicated error UI instead of a blank screen.
@@ -87,7 +88,7 @@ What the shell looks like
 
 - A top header bar with:
   - App title (“Ziv Cocktails”)
-  - Navigation links: Dashboard / History / Scripts
+  - Navigation links: Dashboard / History / Scripts / Salaries
   - A “Sign out” button
 
 Shell polish
@@ -235,6 +236,37 @@ Current behavior
 - Placeholder UI indicating operational scripts UI will be implemented later.
 
 Implementation reference: [src/pages/ScriptsPage.tsx](../src/pages/ScriptsPage.tsx).
+
+---
+
+## Salaries page
+
+Route
+
+- `#/salaries` (protected)
+
+Data flow
+
+- Reads payroll rows via HTTP Cloud Function:
+  - `VITE_SALARIES_URL`
+- Saves edits via HTTP Cloud Function:
+  - `VITE_SALARY_SAVE_URL`
+
+Behavior
+
+- One collapse card per employee
+- Has a view toggle next to the month selector:
+  - Formula view
+  - Table view (sticky header)
+- Edit mode uses inline inputs
+- Save happens only on the check icon
+- If nothing changed, Save is a no-op
+
+Table view details
+- Columns: Employee / Events / Recommendation / Bonus / Total
+- Numeric columns are centered
+
+Implementation reference: [src/pages/SalariesPage.tsx](../src/pages/SalariesPage.tsx).
 
 ---
 

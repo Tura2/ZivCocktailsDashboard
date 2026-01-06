@@ -12,14 +12,14 @@ const corsMiddleware = createCorsMiddlewareForRefresh();
 
 type SalaryEvent = { taskId: string; name: string; requestedDateMs: number; recommendation?: boolean | null };
 
-type SavePayload = {
+type AcceptPayload = {
   month: string; // YYYY-MM
   staffTaskId: string;
   baseRate: number;
   videosCount: number;
   videoRate: number;
   bonus: number;
-  status?: 'unpaid' | 'partial' | 'paid';
+  // Optional; if provided, it will be stored into the monthly snapshot for audit.
   events?: SalaryEvent[];
 };
 
@@ -46,6 +46,11 @@ function toNumNonNeg(v: unknown, label: string): number {
   return n;
 }
 
+function safeNumber(v: unknown, fallback = 0): number {
+  const n = typeof v === 'number' ? v : typeof v === 'string' ? Number(v) : NaN;
+  return Number.isFinite(n) ? n : fallback;
+}
+
 function normalizeEvents(raw: unknown): SalaryEvent[] {
   const arr = Array.isArray(raw) ? raw : [];
   const out: SalaryEvent[] = [];
@@ -55,31 +60,21 @@ function normalizeEvents(raw: unknown): SalaryEvent[] {
     const requestedDateMs = Math.trunc(Number((e as any)?.requestedDateMs ?? NaN));
     const recommendationRaw = (e as any)?.recommendation;
     const recommendation = recommendationRaw === true ? true : recommendationRaw === false ? false : null;
+
     if (!taskId || !name || !Number.isFinite(requestedDateMs)) continue;
     out.push({ taskId, name, requestedDateMs, recommendation });
   }
+
+  out.sort((a, b) => a.requestedDateMs - b.requestedDateMs || a.taskId.localeCompare(b.taskId));
   return out;
 }
 
-function deepEqualEvents(a: SalaryEvent[], b: SalaryEvent[]): boolean {
-  if (a.length !== b.length) return false;
-  for (let i = 0; i < a.length; i++) {
-    const ea = a[i];
-    const eb = b[i];
-    if (ea.taskId !== eb.taskId) return false;
-    if (ea.name !== eb.name) return false;
-    if (ea.requestedDateMs !== eb.requestedDateMs) return false;
-    if ((ea.recommendation ?? null) !== (eb.recommendation ?? null)) return false;
-  }
-  return true;
-}
-
-export const salarySave = onRequest(
+export const salaryAccept = onRequest(
   {
     region: 'me-west1',
     concurrency: 20,
     timeoutSeconds: 30,
-    // Included for parity with salaries endpoint; also allows reusing same deploy secrets set.
+    // Keep for parity with other endpoints; also allows reuse of deploy secrets set.
     secrets: [CLICKUP_API_TOKEN],
   },
   async (req: Request, res: Response) => {
@@ -96,9 +91,8 @@ export const salarySave = onRequest(
     }
 
     try {
-      await requireAllowlistedCaller(req);
-
-      const body = readJsonBody(req) as SavePayload;
+      const caller = await requireAllowlistedCaller(req);
+      const body = readJsonBody(req) as AcceptPayload;
 
       if (!isValidMonthKey(body?.month)) {
         throw new HttpError(400, 'Invalid month. Expected YYYY-MM', 'invalid_month');
@@ -112,62 +106,39 @@ export const salarySave = onRequest(
       const videosCount = toIntNonNeg(body?.videosCount, 'videosCount');
       const videoRate = toIntNonNeg(body?.videoRate, 'videoRate');
       const bonus = toNumNonNeg(body?.bonus, 'bonus');
-
-      const status: 'unpaid' | 'partial' | 'paid' = body?.status === 'paid' || body?.status === 'partial' ? body.status : 'unpaid';
-
       const events = normalizeEvents(body?.events);
-      // Keep deterministic order for change detection
-      events.sort((a, b) => a.requestedDateMs - b.requestedDateMs || a.taskId.localeCompare(b.taskId));
 
       const eventCount = events.length;
       const eventsTotal = eventCount * baseRate;
       const videosTotal = videosCount * videoRate;
       const total = eventsTotal + videosTotal + bonus;
 
+      if (!(total > 0)) {
+        throw new HttpError(400, 'Nothing to accrue for this employee/month', 'nothing_to_accrue');
+      }
+
       const db = getDb();
       const empRef = db.collection('employees').doc(staffTaskId);
       const payRef = empRef.collection('payments').doc(toPaymentDocId(month));
 
-      const [empSnap, paySnap] = await Promise.all([empRef.get(), payRef.get()]);
-      const emp = empSnap.exists ? empSnap.data() : null;
-      const pay = paySnap.exists ? paySnap.data() : null;
+      const result = await db.runTransaction(async (tx) => {
+        const [empSnap, paySnap] = await Promise.all([tx.get(empRef), tx.get(payRef)]);
+        const emp = empSnap.exists ? empSnap.data() : null;
+        const pay = paySnap.exists ? paySnap.data() : null;
 
-      const employeeUpdateNeeded =
-        Math.trunc(Number(emp?.baseRate ?? NaN)) !== baseRate || Math.trunc(Number(emp?.videoRate ?? NaN)) !== videoRate;
+        const alreadyProcessed = Boolean(pay?.processedAt);
+        const currentBalance = safeNumber(emp?.currentBalance, 0);
 
-      const prev = {
-        baseRate: Math.trunc(Number(pay?.baseRate ?? NaN)),
-        videosCount: Math.trunc(Number(pay?.videosCount ?? NaN)),
-        videoRate: Math.trunc(Number(pay?.videoRate ?? NaN)),
-        bonus: Number(pay?.bonus ?? NaN),
-        status: pay?.status,
-        events: Array.isArray(pay?.events) ? (pay.events as any[]) : [],
-      };
+        if (alreadyProcessed) {
+          return { alreadyProcessed: true, currentBalance };
+        }
 
-      const prevEvents = normalizeEvents(prev.events);
-      prevEvents.sort((a, b) => a.requestedDateMs - b.requestedDateMs || a.taskId.localeCompare(b.taskId));
+        const nextBalance = currentBalance + total;
+        const nowIso = new Date().toISOString();
 
-      const paymentUpdateNeeded =
-        prev.baseRate !== baseRate ||
-        prev.videosCount !== videosCount ||
-        prev.videoRate !== videoRate ||
-        !(Number.isFinite(prev.bonus) && prev.bonus === bonus) ||
-        (prev.status !== status) ||
-        !deepEqualEvents(prevEvents, events);
+        tx.set(empRef, { currentBalance: nextBalance }, { merge: true });
 
-      if (!employeeUpdateNeeded && !paymentUpdateNeeded) {
-        sendJson(res, 200, { ok: true, changed: false });
-        return;
-      }
-
-      const batch = db.batch();
-
-      if (employeeUpdateNeeded) {
-        batch.set(empRef, { baseRate, videoRate }, { merge: true });
-      }
-
-      if (paymentUpdateNeeded) {
-        batch.set(
+        tx.set(
           payRef,
           {
             month,
@@ -175,21 +146,26 @@ export const salarySave = onRequest(
             videosCount,
             videoRate,
             bonus,
-            status,
             eventCount,
             eventsTotal,
             videosTotal,
             total,
             events,
-            updatedAt: new Date().toISOString(),
+            status: pay?.status === 'paid' || pay?.status === 'partial' ? pay.status : 'unpaid',
+            updatedAt: nowIso,
+
+            processedAt: nowIso,
+            processedAmount: total,
+            processedByEmail: caller.email,
+            balanceAfterAccrual: nextBalance,
           },
           { merge: true },
         );
-      }
 
-      await batch.commit();
+        return { alreadyProcessed: false, currentBalance: nextBalance };
+      });
 
-      sendJson(res, 200, { ok: true, changed: true });
+      sendJson(res, 200, { ok: true, ...result });
     } catch (e) {
       if (e instanceof HttpError) {
         sendJson(res, e.status, { error: { message: e.message, code: e.code } });
@@ -197,12 +173,12 @@ export const salarySave = onRequest(
       }
 
       const err = e as any;
-      console.error('salarySave failed', {
-        message: String(err?.message ?? 'salarySave failed'),
+      console.error('salaryAccept failed', {
+        message: String(err?.message ?? 'salaryAccept failed'),
         name: String(err?.name ?? ''),
         stack: typeof err?.stack === 'string' ? err.stack : undefined,
       });
-      sendJson(res, 500, { error: { message: String(err?.message ?? 'salarySave failed') } });
+      sendJson(res, 500, { error: { message: String(err?.message ?? 'salaryAccept failed') } });
     }
   },
 );

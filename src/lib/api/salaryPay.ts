@@ -1,37 +1,29 @@
 import { auth, firebaseApp, firebaseEnabled } from '@/lib/firebase';
-import type { SalaryEvent } from '@/lib/api/salaries';
 
-export type SalarySavePayload = {
-  month: string; // YYYY-MM
+export type SalaryPayPayload = {
   staffTaskId: string;
-  baseRate: number;
-  videosCount: number;
-  videoRate: number;
-  bonus: number;
-  status?: 'unpaid' | 'partial' | 'paid';
-  events?: SalaryEvent[];
+  amount: number;
 };
 
-export type SalarySaveResult =
-  | { ok: true; changed: boolean }
+export type SalaryPayResult =
+  | { ok: true; currentBalance: number; transactionId: string }
   | { ok: false; status: number; message: string; code?: string };
 
 function normalizeUrl(explicit: string | undefined): string | null {
   if (!explicit) return null;
   const trimmed = explicit.trim();
   if (!trimmed) return null;
-  // Collapse repeated slashes after the scheme (keep "https://").
   const collapsed = trimmed.replace(/^(https?:\/\/)(.*)$/i, (_, scheme: string, rest: string) => {
     return scheme + rest.replace(/\/+?/g, '/');
   });
   return collapsed.replace(/\/+$/g, '');
 }
 
-function getSalarySaveUrl(): string | null {
-  return normalizeUrl(import.meta.env.VITE_SALARY_SAVE_URL as string | undefined);
+function getSalaryPayUrl(): string | null {
+  return normalizeUrl(import.meta.env.VITE_SALARY_PAY_URL as string | undefined);
 }
 
-async function postSave(url: string, token: string, payload: SalarySavePayload): Promise<{ response: Response; payload: any }> {
+async function post(url: string, token: string, payload: SalaryPayPayload): Promise<{ response: Response; payload: any }> {
   const devEmail = (import.meta.env.VITE_DEV_EMAIL as string | undefined)?.trim();
 
   const headers: Record<string, string> = {
@@ -59,14 +51,14 @@ async function postSave(url: string, token: string, payload: SalarySavePayload):
   return { response, payload: data };
 }
 
-export async function saveSalary(payload: SalarySavePayload): Promise<SalarySaveResult> {
+export async function paySalary(payload: SalaryPayPayload): Promise<SalaryPayResult> {
   if (!firebaseEnabled) {
     return { ok: false, status: 0, message: 'Firebase is not configured' };
   }
 
-  const url = getSalarySaveUrl();
+  const url = getSalaryPayUrl();
   if (!url) {
-    return { ok: false, status: 0, message: 'Salary save endpoint is not configured (missing VITE_SALARY_SAVE_URL)' };
+    return { ok: false, status: 0, message: 'Salary pay endpoint is not configured (missing VITE_SALARY_PAY_URL)' };
   }
 
   const currentUser = auth?.currentUser;
@@ -75,14 +67,14 @@ export async function saveSalary(payload: SalarySavePayload): Promise<SalarySave
   }
 
   const token1 = await currentUser.getIdToken();
-  let { response, payload: resPayload } = await postSave(url, token1, payload);
+  let { response, payload: resPayload } = await post(url, token1, payload);
 
   if (!response.ok && response.status === 401 && resPayload?.error?.code === 'invalid_token') {
     if (import.meta.env.DEV) {
       try {
         const tokenResult = await currentUser.getIdTokenResult();
-        console.warn('[salarySave] invalid_token (first attempt)', {
-          salarySaveUrl: url,
+        console.warn('[salaryPay] invalid_token (first attempt)', {
+          salaryPayUrl: url,
           firebaseProjectId: firebaseApp?.options?.projectId,
           aud: (tokenResult?.claims as any)?.aud,
           iss: (tokenResult?.claims as any)?.iss,
@@ -95,7 +87,7 @@ export async function saveSalary(payload: SalarySavePayload): Promise<SalarySave
     }
 
     const token2 = await currentUser.getIdToken(true);
-    ({ response, payload: resPayload } = await postSave(url, token2, payload));
+    ({ response, payload: resPayload } = await post(url, token2, payload));
   }
 
   if (!response.ok) {
@@ -103,7 +95,7 @@ export async function saveSalary(payload: SalarySavePayload): Promise<SalarySave
       return {
         ok: false,
         status: response.status,
-        message: `Salary save failed with non-JSON response (${response.status}). Possible infra/IAM/auth proxy mismatch.`,
+        message: `Salary pay failed with non-JSON response (${response.status}). Possible infra/IAM/auth proxy mismatch.`,
         code: 'non_json_response',
       };
     }
@@ -111,10 +103,14 @@ export async function saveSalary(payload: SalarySavePayload): Promise<SalarySave
     return {
       ok: false,
       status: response.status,
-      message: resPayload?.error?.message || `Salary save failed (${response.status})`,
+      message: resPayload?.error?.message || `Salary pay failed (${response.status})`,
       code: resPayload?.error?.code,
     };
   }
 
-  return { ok: true, changed: Boolean(resPayload?.changed) };
+  return {
+    ok: true,
+    currentBalance: Number(resPayload?.currentBalance ?? 0),
+    transactionId: String(resPayload?.transactionId ?? ''),
+  };
 }

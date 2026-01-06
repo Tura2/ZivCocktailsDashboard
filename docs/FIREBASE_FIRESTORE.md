@@ -203,6 +203,8 @@ Collections:
   - Stores per-employee defaults.
   - Fields:
     - `baseRate: number`
+    - `videoRate: number` (ILS per recommendation video, default 50)
+    - `currentBalance: number` (ILS, running balance)
 
 - `employees/{staffTaskId}/payments/{YYYY_MM}`
   - Stores the monthly snapshot (doc id uses underscore, e.g. `2026_01`).
@@ -210,6 +212,7 @@ Collections:
     - `month: 'YYYY-MM'`
     - `baseRate: number`
     - `videosCount: number`
+    - `videoRate: number`
     - `bonus: number`
     - `eventCount: number`
     - `eventsTotal: number`
@@ -219,9 +222,41 @@ Collections:
     - `status: 'unpaid' | 'partial' | 'paid'`
     - `updatedAt: string` (ISO)
 
+  - When the previous-month “Monthly Summary” is accepted, the same doc is also marked as processed:
+    - `processedAt: string` (ISO)
+    - `processedAmount: number`
+    - `processedByEmail: string`
+    - `balanceAfterAccrual: number`
+
+- `employees/{staffTaskId}/payments/{autoId}`
+  - Stores a payment transaction record (not a monthly snapshot).
+  - This is distinguished by:
+    - `type: 'payment'`
+  - Fields include:
+    - `amount: number`
+    - `createdAt: string` (ISO)
+    - `createdByEmail: string`
+    - `balanceAfter: number`
+
 Notes:
-- `videosCount` is a user-editable value stored in the monthly payment snapshot.
-- If a month has no saved snapshot yet, the `salaries` HTTP function defaults `videosCount` from ClickUp by counting events where the Event Calendar `Recommendation` checkbox is checked.
+- `videosCount` is derived from ClickUp by counting events where the Event Calendar `Recommendation` checkbox is checked.
+  - It is persisted in the monthly payment snapshot for audit/consistency.
+- `videoRate` is the user-editable value (₪ per recommendation video). It is stored both:
+  - on the employee doc as the default for future months
+  - on the monthly snapshot doc for historical accuracy
+
+Index requirements
+
+- The `salaryHistory` HTTP function queries payment transactions using:
+  - `employees/{staffTaskId}/payments` (collection group)
+  - `where('type', '==', 'payment')`
+  - `orderBy('createdAt', 'desc')`
+- Firestore requires a composite index for this query.
+  - Collection group: `payments`
+  - Fields:
+    - `type` Asc
+    - `createdAt` Desc
+  - (Firestore will also include `__name__` for tie-breaking automatically.)
 
 Do you need to create anything manually?
 - No: Firestore is schemaless; the functions will create these docs on first Save.

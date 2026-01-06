@@ -40,8 +40,11 @@ type SalariesRow = {
   name: string;
   phone: string | null;
 
+  currentBalance: number;
+
   baseRate: number;
   videosCount: number;
+  videoRate: number;
   bonus: number;
 
   eventCount: number;
@@ -52,6 +55,9 @@ type SalariesRow = {
   total: number;
 
   paymentStatus: 'unpaid' | 'partial' | 'paid';
+
+  processedAt: string | null;
+  processedAmount: number | null;
 };
 
 function isValidMonthKey(month: unknown): month is string {
@@ -243,10 +249,16 @@ async function buildMonthlyRows(month: string, timezone: string): Promise<Salari
     const emp = employeeById.get(staffId) ?? null;
     const pay = paymentById.get(staffId) ?? null;
 
+    const currentBalance = Math.max(0, safeNumber(emp?.currentBalance, 0));
+
     const baseRate = Math.max(0, Math.trunc(safeNumber(pay?.baseRate ?? emp?.baseRate, 0)));
+    const videoRate = Math.max(0, Math.trunc(safeNumber(pay?.videoRate ?? emp?.videoRate, 50)));
     const bonus = Math.max(0, safeNumber(pay?.bonus, 0));
     const paymentStatus: 'unpaid' | 'partial' | 'paid' =
       pay?.status === 'paid' || pay?.status === 'partial' ? pay.status : 'unpaid';
+
+    const processedAt = typeof pay?.processedAt === 'string' && pay.processedAt.trim() ? pay.processedAt.trim() : null;
+    const processedAmount = processedAt ? safeNumber(pay?.processedAmount, null as any) : null;
 
     const events = (eventsByStaff.get(staffId) ?? []).slice().sort((a, b) => a.requestedDateMs - b.requestedDateMs);
     const eventCount = events.length;
@@ -255,15 +267,17 @@ async function buildMonthlyRows(month: string, timezone: string): Promise<Salari
     const videosCount = Math.max(0, Math.trunc(safeNumber(pay?.videosCount, computedVideosCount)));
 
     const eventsTotal = eventCount * baseRate;
-    const videosTotal = videosCount * 50;
+    const videosTotal = videosCount * videoRate;
     const total = eventsTotal + videosTotal + bonus;
 
     rows.push({
       staffTaskId: staffId,
       name: staff.name,
       phone: staff.phone,
+      currentBalance,
       baseRate,
       videosCount,
+      videoRate,
       bonus,
       eventCount,
       events,
@@ -271,6 +285,8 @@ async function buildMonthlyRows(month: string, timezone: string): Promise<Salari
       videosTotal,
       total,
       paymentStatus,
+      processedAt,
+      processedAmount: typeof processedAmount === 'number' && Number.isFinite(processedAmount) ? processedAmount : null,
     });
   }
 

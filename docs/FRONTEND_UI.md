@@ -251,6 +251,85 @@ Data flow
   - `VITE_SALARIES_URL`
 - Saves edits via HTTP Cloud Function:
   - `VITE_SALARY_SAVE_URL`
+- Accepts previous-month accrual via HTTP Cloud Function:
+  - `VITE_SALARY_ACCEPT_URL`
+- Records a payment (subtract from balance) via HTTP Cloud Function:
+  - `VITE_SALARY_PAY_URL`
+- Reads payment transaction history via HTTP Cloud Function:
+  - `VITE_SALARY_HISTORY_URL`
+
+Flow / story
+
+The Salaries page is designed as a “compute + review + persist” workflow:
+
+1) Compute (read-only)
+
+- When the page loads (and whenever the month selector changes), the UI calls `fetchSalaries(month)`.
+- The backend (`salaries` HTTP function) pulls:
+  - employees from ClickUp Staff Directory
+  - done events for the selected month from ClickUp Event Calendar
+  - per-employee defaults/snapshots from Firestore
+- The response is a list of per-employee rows with:
+  - `eventCount` and `events[]` (for the selected month)
+  - payroll inputs (`baseRate`, `videosCount`, `bonus`)
+  - computed totals (`eventsTotal`, `videosTotal`, `total`)
+  - balance/status fields (`currentBalance`, `paymentStatus`, and processed markers when relevant)
+
+2) Review / Edit (client-only state)
+
+- Each employee renders as an accordion card.
+- There are 2 views (Formula/Table) that show the same underlying data.
+- Clicking “Edit” switches the row into local draft mode (inputs are stored only in React state).
+
+3) Save (persist snapshot for the selected month)
+
+- Clicking “Save” calls `salarySave` with the row’s `baseRate`, `videoRate`, `videosCount` (read-only), `bonus`, plus `events` for audit.
+- If nothing changed vs the saved snapshot, the UI does a no-op “save” (it just exits edit mode).
+- On success, the UI updates the row totals locally and exits edit mode.
+- Firestore write behavior:
+  - updates `employees/{staffTaskId}.baseRate` when changed
+  - updates `employees/{staffTaskId}.videoRate` when changed
+  - writes/merges the monthly snapshot at `employees/{staffTaskId}/payments/{YYYY_MM}`
+
+4) Monthly Summary (previous month only)
+
+- Separately, the page also loads `fetchSalaries(prevMonth)`.
+- If the previous month has no “done” events at all, this section stays hidden.
+- For each previous-month employee row, the user can optionally Edit/Save (same behavior as step 3) and then:
+  - press “Accept” to accrue that month into the running balance.
+
+5) Accept (accrue previous month into balance)
+
+- Clicking “Accept” calls `salaryAccept` with `{ month: prevMonth, staffTaskId, baseRate, videosCount, videoRate, bonus, events }`.
+- The backend transaction:
+  - prevents double-processing if `processedAt` already exists on the monthly snapshot doc
+  - adds that month’s `total` to `employees/{staffTaskId}.currentBalance`
+  - marks the month snapshot as processed (`processedAt`, `processedAmount`, etc)
+- The UI reflects this by:
+  - updating `currentBalance` in both current and previous month lists
+  - showing “Processed” (disabled) for that month
+
+6) Pay (reduce balance + create a transaction record)
+
+- Clicking “Pay” switches the row into an inline “paying” state (amount input + Confirm/Cancel), then calls `salaryPay({ staffTaskId, amount })`.
+- The backend transaction:
+  - rejects paying more than the current balance
+  - subtracts from `employees/{staffTaskId}.currentBalance`
+  - creates a payment transaction doc under `employees/{staffTaskId}/payments/{autoId}` with `type: 'payment'`
+- The UI updates the displayed balance and triggers a refresh of the history if the row is expanded.
+
+7) Payment history (lazy loaded)
+
+- When an employee row is expanded, the UI calls `salaryHistory` once (cached per staff id) to fetch recent payment transactions.
+- The UI shows a simple table: date, amount, and balanceAfter.
+
+Environment requirements
+
+- Salaries depends on all of the following being set:
+  - Firebase client env vars (Auth)
+  - `VITE_SALARIES_URL` and `VITE_SALARY_SAVE_URL`
+  - For accrual/payment: `VITE_SALARY_ACCEPT_URL`, `VITE_SALARY_PAY_URL`, `VITE_SALARY_HISTORY_URL`
+- All endpoints require a Firebase Auth bearer token, and the caller email must be allowlisted.
 
 Behavior
 
@@ -261,6 +340,12 @@ Behavior
 - Edit mode uses inline inputs
 - Save happens only on the check icon
 - If nothing changed, Save is a no-op
+- Shows employee `currentBalance` and provides a “Pay” action
+- Recommendation count is read-only (derived from ClickUp Recommendation checkbox); the editable value is the recommendation rate (`videoRate`, ₪/vid, default 50)
+- Shows a “Monthly Summary” section for the previous month (collapsible, default collapsed) with an “Accept” action that:
+  - Adds that month’s total to `currentBalance`
+  - Marks the month as processed
+- Expanded view shows payment transactions (latest-first)
 
 Table view details
 - Columns: Employee / Events / Recommendation / Bonus / Total

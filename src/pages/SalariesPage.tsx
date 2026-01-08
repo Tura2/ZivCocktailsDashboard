@@ -848,6 +848,7 @@ export function SalariesPage() {
                   const total = eventsTotal + videosTotal + bonus;
 
                   const eventTooltip = eventsTooltip(r.events);
+                  const recommendationTooltip = `${videosCount} × ${videoRate}₪\n${recommendationEventsTooltip(r.events)}`;
 
                   return (
                     <Fragment key={r.staffTaskId}>
@@ -885,11 +886,8 @@ export function SalariesPage() {
                         </td>
 
                         <td className="px-4 py-3 text-center">
-                          <div className="flex flex-col items-center gap-2" title={recommendationEventsTooltip(r.events)}>
+                          <div className="flex flex-col items-center gap-2" title={recommendationTooltip}>
                             <ILSAmount value={videosTotal} className="font-medium text-slate-900" />
-                            <span className="font-medium" title={recommendationEventsTooltip(r.events)}>
-                              {r.videosCount}
-                            </span>
                             {state.editing ? (
                               <span className="inline-flex items-center gap-1">
                                 <input
@@ -905,9 +903,7 @@ export function SalariesPage() {
                                 />
                                 <span aria-hidden="true">₪</span>
                               </span>
-                            ) : (
-                              <ILSAmount value={r.videoRate ?? 50} className="font-medium text-slate-900" />
-                            )}
+                            ) : null}
                           </div>
                         </td>
 

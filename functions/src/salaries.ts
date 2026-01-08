@@ -133,6 +133,11 @@ function isDone(task: ClickUpTask): boolean {
   return s === 'done';
 }
 
+function isDoneOrBilling(task: ClickUpTask): boolean {
+  const s = String(task?.status?.status ?? '').trim().toLowerCase();
+  return s === 'done' || s === 'billing';
+}
+
 function extractAssignedStaffIds(task: ClickUpTask): string[] {
   const v = getCustomFieldValue(task, FIELD_IDS.assignedStaff);
   if (!v) return [];
@@ -198,7 +203,7 @@ async function buildMonthlyRows(month: string, timezone: string): Promise<Salari
   const eventsByStaff = new Map<string, SalaryEvent[]>();
 
   for (const t of eventTasks) {
-    if (!isDone(t)) continue;
+    if (!isDoneOrBilling(t)) continue;
 
     const requestedDateMs = readRequestedDateMs(t);
     if (requestedDateMs == null) continue;

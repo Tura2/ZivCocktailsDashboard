@@ -20,7 +20,7 @@ function getRefreshUrl(): string | null {
 
 export type RefreshResult =
   | { ok: true; jobId: string; status: string; targetMonth?: string; writtenSnapshots?: string[]; skippedSnapshots?: string[] }
-  | { ok: false; status: number; message: string; code?: string };
+  | { ok: false; status: number; message: string; code?: string; jobId?: string };
 
 async function postRefresh(url: string, token: string, targetMonth?: string): Promise<{ response: Response; payload: any }> {
   const devEmail = (import.meta.env.VITE_DEV_EMAIL as string | undefined)?.trim();
@@ -109,6 +109,7 @@ export async function triggerRefresh(targetMonth?: string): Promise<RefreshResul
       status: response.status,
       message: payload?.error?.message || `Refresh failed (${response.status})`,
       code: payload?.error?.code,
+      jobId: payload?.jobId,
     };
   }
 

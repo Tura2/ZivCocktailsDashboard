@@ -14,7 +14,7 @@ const engineClickUpHttp = require('../../engine/clickup/ClickUpHttpClient');
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const engineInstagram = require('../../engine/instagram/InstagramGraphClient');
 // eslint-disable-next-line @typescript-eslint/no-var-requires
-const engineSnapshots = require('../../engine/snapshots/generateSnapshotRecords');
+const engineDiff = require('../../engine/snapshots/diff');
 
 export interface RunRefreshInput {
   jobId: string;
@@ -112,6 +112,19 @@ async function tryReadSnapshotMetrics(month: string): Promise<any | null> {
   return doc.get('metrics') ?? null;
 }
 
+function nullDiffLike(example: any): any {
+  if (example == null) return null;
+  if (Array.isArray(example)) return example.map(nullDiffLike);
+  if (typeof example === 'object') {
+    const out: Record<string, unknown> = {};
+    for (const [k, v] of Object.entries(example)) {
+      out[k] = nullDiffLike(v);
+    }
+    return out;
+  }
+  return null;
+}
+
 function isAlreadyExistsError(e: unknown): boolean {
   const anyErr = e as any;
   // Firestore gRPC status code for ALREADY_EXISTS is 6.
@@ -148,38 +161,50 @@ export async function runRefresh(input: RunRefreshInput): Promise<RunRefreshResu
   const missingMonths: string[] = engineMonthLogic.listMissingSnapshotMonths(lastSnapshotMonth, targetMonth);
   await input.log(`Missing months to generate: ${missingMonths.join(', ') || '(none)'}`);
 
-  // Optional previous snapshot metrics to seed diffs
-  const previousSnapshotMetrics = lastSnapshotMonth ? await tryReadSnapshotMetrics(lastSnapshotMonth) : null;
-
-  const records = await engineSnapshots.generateSnapshotRecords({
-    months: missingMonths,
-    computedAt: now,
-    previousSnapshot: previousSnapshotMetrics ? { month: lastSnapshotMonth, metrics: previousSnapshotMetrics } : undefined,
-    computeDashboard: (month: string) => engineComputeDashboard.computeDashboard(month, { clickup, instagram, computedAt: now }),
-  });
-
   const writtenSnapshots: string[] = [];
   const skippedSnapshots: string[] = [];
 
-  for (const rec of records) {
-    const month = rec.month as string;
+  // Seed diff chain from the last stored snapshot (if any).
+  let prevMetrics: any | null = lastSnapshotMonth ? await tryReadSnapshotMetrics(lastSnapshotMonth) : null;
+
+  // Create missing snapshots in chronological order, including breakdown docs.
+  for (const month of [...missingMonths].sort()) {
     const ref = getDb().collection('snapshots').doc(month);
 
-    try {
-      await ref.create({
-        version: 'v1',
-        month,
-        computedAt: rec.computedAt,
-        metrics: rec.metrics,
-        diffFromPreviousPct: rec.diffFromPreviousPct,
-      });
+    // Compute metrics + breakdowns once.
+    const artifacts = await engineComputeDashboard.computeDashboardWithBreakdowns(month, { clickup, instagram, computedAt: now });
+    const metrics = artifacts.metrics;
 
+    const diffFromPreviousPct = prevMetrics
+      ? engineDiff.computeDiffFromPreviousPct(metrics, prevMetrics)
+      : nullDiffLike(engineDiff.computeDiffFromPreviousPct(metrics, metrics));
+
+    const batch = getDb().batch();
+    batch.create(ref, {
+      version: 'v1',
+      month,
+      computedAt: metrics.computedAt,
+      metrics,
+      diffFromPreviousPct,
+    });
+
+    const breakdownParent = ref.collection('metricBreakdowns');
+    const breakdowns = (artifacts.breakdowns ?? {}) as Record<string, any>;
+    for (const breakdown of Object.values(breakdowns) as any[]) {
+      if (!breakdown || breakdown.kind === 'none') continue;
+      batch.set(breakdownParent.doc(String(breakdown.metricKey)), breakdown, { merge: false });
+    }
+
+    try {
+      await batch.commit();
       writtenSnapshots.push(month);
-      await input.log(`Wrote snapshots/${month}`);
+      await input.log(`Wrote snapshots/${month} (+ metricBreakdowns)`);
+      prevMetrics = metrics;
     } catch (e) {
       if (isAlreadyExistsError(e)) {
         skippedSnapshots.push(month);
         await input.log(`Skip snapshots/${month} (already exists)`);
+        // Keep prevMetrics unchanged so diff chain remains correct for subsequent creates.
         continue;
       }
       throw e;
@@ -193,23 +218,78 @@ export async function runRefresh(input: RunRefreshInput): Promise<RunRefreshResu
     const prevMonth = engineMonthLogic.addMonths(targetMonth, -1);
     const prevMetrics = await tryReadSnapshotMetrics(prevMonth);
 
-    const [rec] = await engineSnapshots.generateSnapshotRecords({
-      months: [targetMonth],
-      computedAt: now,
-      previousSnapshot: prevMetrics ? { month: prevMonth, metrics: prevMetrics } : undefined,
-      computeDashboard: (month: string) => engineComputeDashboard.computeDashboard(month, { clickup, instagram, computedAt: now }),
-    });
+    // Compute metrics + breakdowns once, then batch-write snapshot + breakdown docs + dashboard/latest.
+    const artifacts = await engineComputeDashboard.computeDashboardWithBreakdowns(targetMonth, { clickup, instagram, computedAt: now });
+    const metrics = artifacts.metrics;
 
-    await ref.set(
+    const diffFromPreviousPct = prevMetrics
+      ? engineDiff.computeDiffFromPreviousPct(metrics, prevMetrics)
+      : nullDiffLike(engineDiff.computeDiffFromPreviousPct(metrics, metrics));
+
+    const batch = getDb().batch();
+
+    batch.set(
+      ref,
       {
         version: 'v1',
         month: targetMonth,
-        computedAt: rec.computedAt,
-        metrics: rec.metrics,
-        diffFromPreviousPct: rec.diffFromPreviousPct,
+        computedAt: metrics.computedAt,
+        metrics,
+        diffFromPreviousPct,
       },
       { merge: false },
     );
+
+    // Persist breakdown docs under snapshots/{month}/metricBreakdowns/{metricKey}
+    const breakdownParent = ref.collection('metricBreakdowns');
+    const knownKeys = [
+      'totalLeads',
+      'relevantLeads',
+      'landingVisits',
+      'landingSignups',
+      'monthlyRevenue',
+      'monthlyRevenueNet',
+      'expectedCashflow',
+      'expectedExpenses',
+      'activeCustomers',
+      'cancellations',
+      'referralsWordOfMouth',
+      'returningCustomers',
+      'closures',
+      'avgRevenuePerDealGross',
+      // Explicitly ensure as-is metrics do not have breakdown docs.
+      'followersEndOfMonth',
+      'followersDeltaMonth',
+    ];
+
+    const present = new Set(Object.keys(artifacts.breakdowns ?? {}));
+
+    for (const key of knownKeys) {
+      const docRef = breakdownParent.doc(key);
+      const breakdown = artifacts.breakdowns?.[key];
+
+      if (!breakdown || breakdown.kind === 'none') {
+        // Delete stale docs if any.
+        batch.delete(docRef);
+        continue;
+      }
+
+      batch.set(docRef, breakdown, { merge: false });
+    }
+
+    // dashboard/latest always overwritten with targetMonth metrics
+    batch.set(
+      getDb().collection('dashboard').doc('latest'),
+      {
+        version: 'v1',
+        month: targetMonth,
+        computedAt: metrics.computedAt,
+        metrics,
+      },
+      { merge: false },
+    );
+
+    await batch.commit();
 
     if (!writtenSnapshots.includes(targetMonth)) {
       writtenSnapshots.push(targetMonth);
@@ -217,20 +297,7 @@ export async function runRefresh(input: RunRefreshInput): Promise<RunRefreshResu
     await input.log(`Upsert snapshots/${targetMonth}`);
   }
 
-  // dashboard/latest always overwritten with targetMonth metrics
-  const dashboardMetrics = await engineComputeDashboard.computeDashboard(targetMonth, { clickup, instagram, computedAt: now });
-
-  await getDb().collection('dashboard').doc('latest').set(
-    {
-      version: 'v1',
-      month: targetMonth,
-      computedAt: dashboardMetrics.computedAt,
-      metrics: dashboardMetrics,
-    },
-    { merge: false },
-  );
-
-  await input.log(`Wrote dashboard/latest for ${targetMonth}`);
+  await input.log(`Wrote dashboard/latest + metricBreakdowns for ${targetMonth}`);
 
   // Update job doc targetMonth
   await getDb().collection('jobs').doc(input.jobId).update({ targetMonth });

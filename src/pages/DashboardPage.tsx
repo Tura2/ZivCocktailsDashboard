@@ -10,6 +10,8 @@ import { SectionCard } from '@/components/ui/SectionCard';
 import { KpiTile } from '@/components/ui/KpiTile';
 import { densityGaps } from '@/ui/density';
 import { LogoLoading } from '@/components/ui/LogoLoading';
+import { useRefreshJobStatus } from '@/lib/refresh/useRefreshJobStatus';
+import { setRefreshJobId } from '@/lib/refresh/refreshRuntime';
 
 function formatILS(value: number | null | undefined) {
   if (value == null) return '—';
@@ -135,6 +137,8 @@ function SkeletonSection() {
 
 export function DashboardPage() {
   const { state, lastUpdatedIso } = useDashboardLatest();
+  const refreshJob = useRefreshJobStatus();
+  const jobRunning = refreshJob.status === 'running';
   const [refreshState, setRefreshState] = useState<{ status: 'idle' | 'running' | 'ok' | 'error'; message?: string }>(
     () => ({ status: 'idle' }),
   );
@@ -156,10 +160,18 @@ export function DashboardPage() {
     try {
       const result = await triggerRefresh();
       if (!result.ok) {
+        if (result.code === 'already_running') {
+          // Backend indicates a global refresh job is already running.
+          setRefreshOverlay({ visible: false, loading: true, message: 'Refreshing dashboard…' });
+          setRefreshState({ status: 'running' });
+          if (result.jobId) setRefreshJobId(result.jobId);
+          return;
+        }
         setRefreshOverlay({ visible: false, loading: true, message: 'Refreshing dashboard…' });
         setRefreshState({ status: 'error', message: result.code ? `${result.message} (${result.code})` : result.message });
         return;
       }
+      setRefreshJobId(result.jobId);
       setRefreshState({ status: 'ok', message: `Refresh started (job ${result.jobId})` });
     } catch (e) {
       const err = e as Error;
@@ -185,7 +197,7 @@ export function DashboardPage() {
   }
 
   const gaps = densityGaps('comfortable');
-  const refreshDisabled = refreshState.status === 'running' || state.status === 'disabled';
+  const refreshDisabled = jobRunning || state.status === 'disabled';
 
   return (
     <div className={gaps.page}>
@@ -213,7 +225,7 @@ export function DashboardPage() {
               onClick={onRefresh}
               disabled={refreshDisabled}
             >
-              {refreshState.status === 'running' ? 'Refreshing…' : 'Refresh'}
+              {jobRunning ? 'Running…' : 'Refresh'}
             </button>
           </div>
         }
@@ -251,7 +263,7 @@ export function DashboardPage() {
               onClick={onRefresh}
               disabled={refreshDisabled}
             >
-              {refreshState.status === 'running' ? 'Refreshing…' : 'Refresh'}
+              {jobRunning ? 'Running…' : 'Refresh'}
             </button>
           </div>
         </Card>
@@ -275,7 +287,7 @@ export function DashboardPage() {
                     title="Financial"
                     subtitle="Revenue, cashflow and expenses"
                   >
-                    <KpiGrid items={kpis.financial} />
+                    <KpiGrid items={kpis.financial} snapshotId={latest?.month ?? null} snapshotVersion={latest?.computedAt ?? null} />
                   </SectionCard>
                 </div>
 
@@ -285,7 +297,7 @@ export function DashboardPage() {
                     title="Marketing"
                     subtitle="Lead volume and top-of-funnel"
                   >
-                    <KpiGrid items={kpis.marketing} />
+                    <KpiGrid items={kpis.marketing} snapshotId={latest?.month ?? null} snapshotVersion={latest?.computedAt ?? null} />
                   </SectionCard>
                 </div>
 
@@ -295,7 +307,7 @@ export function DashboardPage() {
                     title="Sales"
                     subtitle="Calls, closures, and conversion"
                   >
-                    <KpiGrid items={kpis.sales} />
+                    <KpiGrid items={kpis.sales} snapshotId={latest?.month ?? null} snapshotVersion={latest?.computedAt ?? null} />
                   </SectionCard>
                 </div>
 
@@ -305,7 +317,7 @@ export function DashboardPage() {
                     title="Operations"
                     subtitle="Customers, retention, and referrals"
                   >
-                    <KpiGrid items={kpis.operations} />
+                    <KpiGrid items={kpis.operations} snapshotId={latest?.month ?? null} snapshotVersion={latest?.computedAt ?? null} />
                   </SectionCard>
                 </div>
               </div>

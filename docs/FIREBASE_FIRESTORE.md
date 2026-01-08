@@ -187,7 +187,53 @@ It has a TTL so a crash won’t block refresh forever.
 
 ---
 
-### 3.5 `employees/*` (Payroll / Salaries)
+### 3.5 `snapshots/{YYYY-MM}/metricBreakdowns/{metricKey}` (KPI calculation breakdowns)
+
+Purpose:
+- Stores optional “calculation transparency” payloads per metric.
+- The UI lazily reads these docs on hover to show a breakdown tooltip.
+
+Written by:
+- `functions/src/refresh/runRefresh.ts` (as part of refresh snapshot writes)
+
+Read by:
+- `src/hooks/useMetricBreakdown.ts`
+
+Document schema (v1):
+```ts
+// Stored under: snapshots/{month}/metricBreakdowns/{metricKey}
+type MetricBreakdownDoc =
+  | {
+      schemaVersion: 1;
+      metricKey: string;
+      kind: 'names';
+      generatedAt?: string; // ISO
+      items: Array<{ id?: string; name: string; status?: string | null; dateIso?: string }>;
+    }
+  | {
+      schemaVersion: 1;
+      metricKey: string;
+      kind: 'line_items';
+      currency: 'ILS';
+      generatedAt?: string; // ISO
+      items: Array<{ id?: string; name: string; amountAgorot: number; status?: string | null; dateIso?: string }>;
+    }
+  | {
+      schemaVersion: 1;
+      metricKey: string;
+      kind: 'none';
+      generatedAt?: string;
+    };
+```
+
+Notes:
+- Amounts are stored as integers (`amountAgorot`) to avoid float rounding issues.
+- `kind: 'none'` means the metric intentionally has no breakdown.
+- Firestore rules allow client read, deny client write.
+
+---
+
+### 3.6 `employees/*` (Payroll / Salaries)
 
 The Salaries module persists per-employee defaults and per-month payment snapshots.
 

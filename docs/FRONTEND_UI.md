@@ -167,6 +167,20 @@ State handling
 - Error state if fetch fails
 - “No data” messaging if there is no latest dashboard data
 
+Refresh behavior
+
+- On the first authenticated load (once per app session), the app triggers a best-effort refresh in the background.
+  - This does not show the logo overlay.
+  - The Dashboard Refresh button reflects the real job state by tracking `jobs/{jobId}`.
+- Manual refresh (Dashboard Refresh button) shows the logo overlay immediately.
+  - If the backend reports `already_running`, the overlay is dismissed and the button switches to **Running…** (disabled) by tracking the existing job.
+
+KPI calculation tooltips
+
+- KPI cards can show a “Calculation breakdown” hover tooltip when breakdown data exists in Firestore.
+- Data source: `snapshots/{month}/metricBreakdowns/{metricKey}` (lazy-loaded on hover).
+- Tooltips are used on both Dashboard and History KPI grids.
+
 Implementation reference: [src/pages/DashboardPage.tsx](../src/pages/DashboardPage.tsx).
 
 ---

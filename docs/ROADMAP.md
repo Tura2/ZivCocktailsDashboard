@@ -187,12 +187,16 @@ Done when:
 
 ---
 
-## F10) Polishing & Hardening
+## F10) Calculation Transparency + Refresh UX
 
-**Goal:** Production-ready.
+Stage doc: [stages/F10_CALCULATION_BREAKDOWNS_AND_REFRESH_UX.md](stages/F10_CALCULATION_BREAKDOWNS_AND_REFRESH_UX.md)
+
+**Goal:** Make the dashboard explainable and refresh feel safe.
 
 Includes:
-- Loading states
-- Job locks
-- Error recovery
-- Windows EXE build
+- Persist per-metric calculation breakdown docs under `snapshots/{month}/metricBreakdowns/{metricKey}`
+- Hover tooltips on KPI cards (Dashboard + History) that lazy-load breakdowns
+- Refresh UX split:
+	- Auto refresh once per app session after auth (no logo overlay)
+	- Manual refresh shows logo overlay
+	- Button reflects real refresh job status via `jobs/{jobId}` subscription

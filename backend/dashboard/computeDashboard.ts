@@ -5,7 +5,7 @@ import { getMonthRange, getPreviousMonth } from '../time/month';
 import { normalizeEvent, normalizeExpense, normalizeIncomingLead } from '../normalize/clickup';
 import { computeFinancialMetrics } from '../metrics/financial';
 import { computeMarketingMetrics } from '../metrics/marketing';
-import { computeSalesMetrics } from '../metrics/sales';
+import { computeSalesMetrics, extractClosedWonEventsInMonth } from '../metrics/sales';
 import { computeOperationsMetrics } from '../metrics/operations';
 import type { InstagramClient } from '../instagram/InstagramClient';
 import { ciEquals, countMetric, currencyMetric } from '../metrics/helpers';
@@ -13,9 +13,8 @@ import {
   extractDepositPaidTimestampMs,
   extractFirstBillingToDoneTransitionTimestampMs,
   extractFirstDoneStatusChangeTimestampMs,
-  getClosedWonMoveTimestampMs,
 } from '../clickup/comments';
-import { CLICKUP } from '../config/dataContract';
+import { CLICKUP, CLICKUP_SOURCE, CLICKUP_STATUS } from '../config/dataContract';
 import { ensureNetGross } from '../vat/vat';
 import { isWithinMonth } from '../time/month';
 import type { ClickUpCustomField, ClickUpTask, ClickUpTaskComment } from '../clickup/types';
@@ -24,6 +23,36 @@ export interface ComputeDashboardDeps {
   clickup: ClickUpClient;
   instagram?: InstagramClient;
   computedAt?: Date;
+}
+
+type MetricBreakdownKind = 'none' | 'names' | 'line_items';
+
+export type MetricBreakdownDoc =
+  | {
+      schemaVersion: 1;
+      metricKey: string;
+      kind: 'names';
+      generatedAt?: string;
+      items: Array<{ id?: string; name: string; status?: string | null; dateIso?: string }>;
+    }
+  | {
+      schemaVersion: 1;
+      metricKey: string;
+      kind: 'line_items';
+      currency: 'ILS';
+      generatedAt?: string;
+      items: Array<{ id?: string; name: string; amountAgorot: number; status?: string | null; dateIso?: string }>;
+    }
+  | {
+      schemaVersion: 1;
+      metricKey: string;
+      kind: 'none';
+      generatedAt?: string;
+    };
+
+export interface DashboardArtifacts {
+  metrics: DashboardMetrics;
+  breakdowns: Record<string, MetricBreakdownDoc>;
 }
 
 function monthFromDateUTC(d: Date): YYYYMM {
@@ -91,7 +120,7 @@ async function computeMonthlyRevenueFromEventCalendar(args: {
   range: ReturnType<typeof getMonthRange>;
   getComments: (taskId: string) => Promise<ClickUpTaskComment[]>;
   eventTasks: ClickUpTask[];
-}): Promise<{ gross: number; net: number; notes: string[] }> {
+}): Promise<{ gross: number; net: number; notes: string[]; items: Array<{ id: string; name: string; status: string | null; amountGrossILS: number }> }> {
   const notes: string[] = [];
 
   // Field selection:
@@ -105,12 +134,28 @@ async function computeMonthlyRevenueFromEventCalendar(args: {
   let depositCount = 0;
   let balanceCount = 0;
 
+  const amountsByTaskId = new Map<string, { id: string; name: string; status: string | null; amountGrossILS: number }>();
+
+  const addAmount = (task: ClickUpTask, amount: number | null) => {
+    const add = amount ?? 0;
+    if (add === 0) return;
+    const existing = amountsByTaskId.get(task.id);
+    if (existing) {
+      existing.amountGrossILS += add;
+      return;
+    }
+    amountsByTaskId.set(task.id, { id: task.id, name: task.name ?? '(untitled)', status: task.status?.status ?? null, amountGrossILS: add });
+  };
+
   // Bound comment lookups to keep refresh predictable.
   const maxCommentLookups = 200;
   let commentLookups = 0;
 
   for (const task of args.eventTasks) {
     const status = task.status?.status ?? null;
+
+    // Cancelled events should not contribute to revenue.
+    if (ciEquals(status, CLICKUP_STATUS.cancelled)) continue;
 
     let comments: ClickUpTaskComment[] | null = null;
     const getTaskComments = async () => {
@@ -140,6 +185,7 @@ async function computeMonthlyRevenueFromEventCalendar(args: {
         notes.push(`Balance Due missing for DONE task ${task.id} => treated as 0`);
       } else {
         balancesGross += balanceDue;
+        addAmount(task, balanceDue);
       }
       balanceCount += 1;
     }
@@ -172,6 +218,7 @@ async function computeMonthlyRevenueFromEventCalendar(args: {
       notes.push(`Deposit comment found but Deposit field missing for task ${task.id} => treated as 0`);
     } else {
       depositsGross += depositValue;
+      addAmount(task, depositValue);
     }
     depositCount += 1;
   }
@@ -181,14 +228,14 @@ async function computeMonthlyRevenueFromEventCalendar(args: {
   notes.push('Budget treated as gross ILS; net computed with VAT 18%');
 
   const totals = ensureNetGross({ grossILS: depositsGross + balancesGross, netILS: null });
-  return { gross: totals.grossILS ?? 0, net: totals.netILS ?? 0, notes };
+  return { gross: totals.grossILS ?? 0, net: totals.netILS ?? 0, notes, items: Array.from(amountsByTaskId.values()) };
 }
 
 async function computeExpectedRevenueV2FromEventCalendar(args: {
   range: ReturnType<typeof getMonthRange>;
   getComments: (taskId: string) => Promise<ClickUpTaskComment[]>;
   eventTasks: ClickUpTask[];
-}): Promise<{ gross: number; net: number; notes: string[] }> {
+}): Promise<{ gross: number; net: number; notes: string[]; items: Array<{ id: string; name: string; status: string | null; amountGrossILS: number }> }> {
   const notes: string[] = [];
 
   const depositNameMatchers = [/deposit/i, /advance/i, /מקדמה/];
@@ -201,12 +248,28 @@ async function computeExpectedRevenueV2FromEventCalendar(args: {
   let scheduledCount = 0;
   let billingReleaseCount = 0;
 
+  const amountsByTaskId = new Map<string, { id: string; name: string; status: string | null; amountGrossILS: number }>();
+
+  const addAmount = (task: ClickUpTask, amount: number | null) => {
+    const add = amount ?? 0;
+    if (add === 0) return;
+    const existing = amountsByTaskId.get(task.id);
+    if (existing) {
+      existing.amountGrossILS += add;
+      return;
+    }
+    amountsByTaskId.set(task.id, { id: task.id, name: task.name ?? '(untitled)', status: task.status?.status ?? null, amountGrossILS: add });
+  };
+
   // Bound comment lookups to keep refresh predictable.
   const maxCommentLookups = 250;
   let commentLookups = 0;
 
   for (const task of args.eventTasks) {
     const status = task.status?.status ?? null;
+
+    // Cancelled events should not contribute to expected cashflow.
+    if (ciEquals(status, CLICKUP_STATUS.cancelled)) continue;
     const eventDateMs = parseNumberLoose(findCustomField(task, (f) => f.id === CLICKUP.fields.requestedDate)?.value);
 
     const depositValue = readNumberCustomField(task, { id: CLICKUP.fields.paidAmount, nameMatchers: depositNameMatchers });
@@ -236,6 +299,7 @@ async function computeExpectedRevenueV2FromEventCalendar(args: {
         notes.push(`Billing->Done transition found but Balance Due missing for task ${task.id} => treated as 0`);
       } else {
         billingReleaseGross += balanceDue;
+        addAmount(task, balanceDue);
       }
       billingReleaseCount += 1;
     }
@@ -259,6 +323,7 @@ async function computeExpectedRevenueV2FromEventCalendar(args: {
         notes.push(`Deposit comment found but Deposit field missing for task ${task.id} => treated as 0`);
       } else {
         depositsGross += depositValue;
+        addAmount(task, depositValue);
       }
       depositCount += 1;
     }
@@ -273,6 +338,7 @@ async function computeExpectedRevenueV2FromEventCalendar(args: {
         notes.push(`Scheduled event in month but Balance Due missing for task ${task.id} => treated as 0`);
       } else {
         scheduledBalancesGross += balanceDue;
+        addAmount(task, balanceDue);
       }
       scheduledCount += 1;
     }
@@ -285,11 +351,12 @@ async function computeExpectedRevenueV2FromEventCalendar(args: {
   notes.push('Budget treated as gross ILS; net computed with VAT 18%');
 
   const totals = ensureNetGross({ grossILS: depositsGross + scheduledBalancesGross + billingReleaseGross, netILS: null });
-  return { gross: totals.grossILS ?? 0, net: totals.netILS ?? 0, notes };
+  return { gross: totals.grossILS ?? 0, net: totals.netILS ?? 0, notes, items: Array.from(amountsByTaskId.values()) };
 }
 
-export async function computeDashboard(month: YYYYMM, deps: ComputeDashboardDeps): Promise<DashboardMetrics> {
+async function computeDashboardInternal(month: YYYYMM, deps: ComputeDashboardDeps, options: { includeBreakdowns: boolean }): Promise<DashboardArtifacts> {
   const computedAt = deps.computedAt ?? new Date();
+  const computedAtIso = computedAt.toISOString();
   const range = getMonthRange(month);
 
   const [leadTasks, eventTasks, expenseTasks] = await Promise.all([
@@ -301,16 +368,6 @@ export async function computeDashboard(month: YYYYMM, deps: ComputeDashboardDeps
   const leads = leadTasks.map(normalizeIncomingLead);
   const events = eventTasks.map(normalizeEvent);
   const expenses = expenseTasks.map(normalizeExpense);
-
-  // Production ClickUp automation can move Closed Won tasks out of Incoming Leads into Event Calendar,
-  // changing status to "booked". To keep closures + revenue correct, we treat the ClickBot move comment
-  // timestamp as the effective close date for those moved deals.
-  const leadIds = new Set(leadTasks.map((t) => t.id));
-  const maxCommentLookups = 60;
-  const extraClosedWon: Array<{ closeMs: number | null; budgetGrossILS: number | null; notes?: string[] }> = [];
-  const extraClosedWonCloseMs: Array<number | null> = [];
-
-  const candidateEventTasks = eventTasks.filter((t) => !leadIds.has(t.id));
 
   const commentCache = new Map<string, ClickUpTaskComment[]>();
   async function getComments(taskId: string): Promise<ClickUpTaskComment[]> {
@@ -330,25 +387,6 @@ export async function computeDashboard(month: YYYYMM, deps: ComputeDashboardDeps
     return Number.isFinite(asNum) ? asNum : null;
   }
 
-  // Keep API usage bounded: only inspect tasks updated within the month, and cap lookups.
-  for (const task of candidateEventTasks) {
-    if (extraClosedWon.length >= maxCommentLookups) break;
-
-    const updatedMs = parseTaskMs(task.date_updated);
-    if (updatedMs == null || updatedMs < range.startMs || updatedMs >= range.endExclusiveMs) continue;
-
-    const moveMs = await getClosedWonMoveTimestampMs(deps.clickup, task.id);
-    if (moveMs == null) continue;
-
-    const effectiveCloseMs = moveMs ?? updatedMs;
-    extraClosedWonCloseMs.push(effectiveCloseMs);
-    extraClosedWon.push({
-      closeMs: effectiveCloseMs,
-      budgetGrossILS: readBudgetGrossILS(task),
-      notes: ['Close date from ClickBot move-to-Event-Calendar comment'],
-    });
-  }
-
   const eventRevenue = await computeMonthlyRevenueFromEventCalendar({
     range,
     getComments,
@@ -361,14 +399,25 @@ export async function computeDashboard(month: YYYYMM, deps: ComputeDashboardDeps
     eventTasks,
   });
 
-  const financialCore = computeFinancialMetrics({ month, range, leads, expenses, extraClosedWon });
+  const financialCore = computeFinancialMetrics({ month, range, leads, expenses });
   const financial = {
     ...financialCore,
     monthlyRevenue: currencyMetric('clickup', { grossILS: eventRevenue.gross, netILS: eventRevenue.net }, eventRevenue.notes),
     expectedCashflow: currencyMetric('clickup', { grossILS: expectedRevenueV2.gross, netILS: expectedRevenueV2.net }, expectedRevenueV2.notes),
   };
   const marketingCore = computeMarketingMetrics({ month, range, leads });
-  const sales = computeSalesMetrics({ month, range, leads, monthlyRevenue: financial.monthlyRevenue, extraClosedWonCloseMs });
+  const closedWonEventsInMonth = await extractClosedWonEventsInMonth(eventTasks, getComments, range);
+
+  const sales = await computeSalesMetrics({
+    month,
+    range,
+    leads,
+    monthlyRevenue: financial.monthlyRevenue,
+    // Use the pre-extracted list to avoid duplicate comment fetches.
+    closedWonEventsInMonth,
+    eventTasks,
+    getComments,
+  });
   const operations = computeOperationsMetrics({ month, range, leads, events, computedAt });
 
   // Followers metrics (current + previous month only)
@@ -416,10 +465,10 @@ export async function computeDashboard(month: YYYYMM, deps: ComputeDashboardDeps
   const followersEndOfMonth = countMetric('instagram', followersEndOfMonthValue, followerNotes.length ? followerNotes : undefined);
   const followersDeltaMonth = countMetric('instagram', followersDeltaValue, followerNotes.length ? followerNotes : undefined);
 
-  return {
+  const metrics: DashboardMetrics = {
     version: 'v1',
     month,
-    computedAt: computedAt.toISOString(),
+    computedAt: computedAtIso,
 
     financial,
     marketing: {
@@ -430,4 +479,217 @@ export async function computeDashboard(month: YYYYMM, deps: ComputeDashboardDeps
     sales,
     operations,
   };
+
+  const breakdowns: Record<string, MetricBreakdownDoc> = {};
+
+  if (options.includeBreakdowns) {
+    // Leads breakdowns (names)
+    const isClosedLostNotRelevant = (lead: { status: string | null; lossReason: string | null }) =>
+      (ciEquals(lead.status, 'Closed Lost') || ciEquals(lead.status, 'Closed Loss')) && ciEquals(lead.lossReason, 'Not Relevant');
+
+    const totalLeadsItems = leads
+      .filter((l) => l.createdMs != null && isWithinMonth(l.createdMs, range))
+      .map((l) => ({ id: l.id, name: l.name }));
+
+    const relevantLeadsItems = leads
+      .filter((l) => l.createdMs != null && isWithinMonth(l.createdMs, range))
+      .filter((l) => !isClosedLostNotRelevant(l))
+      .map((l) => ({ id: l.id, name: l.name }));
+
+    const landingItems = leads
+      .filter((l) => l.createdMs != null && isWithinMonth(l.createdMs, range))
+      .filter((l) => ciEquals(l.source, CLICKUP_SOURCE.landingPage))
+      .map((l) => ({ id: l.id, name: l.name }));
+
+    breakdowns.totalLeads = { schemaVersion: 1, metricKey: 'totalLeads', kind: 'names', generatedAt: computedAtIso, items: totalLeadsItems };
+    breakdowns.relevantLeads = { schemaVersion: 1, metricKey: 'relevantLeads', kind: 'names', generatedAt: computedAtIso, items: relevantLeadsItems };
+    breakdowns.landingVisits = { schemaVersion: 1, metricKey: 'landingVisits', kind: 'names', generatedAt: computedAtIso, items: landingItems };
+    breakdowns.landingSignups = { schemaVersion: 1, metricKey: 'landingSignups', kind: 'names', generatedAt: computedAtIso, items: landingItems };
+
+    // Financial breakdowns (line_items)
+    const toAgorot = (ils: number) => Math.round(ils * 100);
+
+    breakdowns.monthlyRevenue = {
+      schemaVersion: 1,
+      metricKey: 'monthlyRevenue',
+      kind: 'line_items',
+      currency: 'ILS',
+      generatedAt: computedAtIso,
+      items: eventRevenue.items
+        .filter((it) => Number.isFinite(it.amountGrossILS) && it.amountGrossILS !== 0)
+        .map((it) => ({ id: it.id, name: it.name, amountAgorot: toAgorot(it.amountGrossILS), status: it.status })),
+    };
+
+    breakdowns.monthlyRevenueNet = {
+      schemaVersion: 1,
+      metricKey: 'monthlyRevenueNet',
+      kind: 'line_items',
+      currency: 'ILS',
+      generatedAt: computedAtIso,
+      items: eventRevenue.items
+        .map((it) => {
+          const amounts = ensureNetGross({ grossILS: it.amountGrossILS, netILS: null });
+          return amounts.netILS == null
+            ? null
+            : ({ id: it.id, name: it.name, amountAgorot: toAgorot(amounts.netILS), status: it.status } as const);
+        })
+        .filter((v): v is { id: string; name: string; amountAgorot: number; status: string | null } => Boolean(v)),
+    };
+
+    breakdowns.expectedCashflow = {
+      schemaVersion: 1,
+      metricKey: 'expectedCashflow',
+      kind: 'line_items',
+      currency: 'ILS',
+      generatedAt: computedAtIso,
+      items: expectedRevenueV2.items
+        .filter((it) => Number.isFinite(it.amountGrossILS) && it.amountGrossILS !== 0)
+        .map((it) => ({ id: it.id, name: it.name, amountAgorot: toAgorot(it.amountGrossILS), status: it.status })),
+    };
+
+    breakdowns.expectedExpenses = {
+      schemaVersion: 1,
+      metricKey: 'expectedExpenses',
+      kind: 'line_items',
+      currency: 'ILS',
+      generatedAt: computedAtIso,
+      items: expenses
+        .filter((e) => e.expenseDateMs != null && isWithinMonth(e.expenseDateMs, range))
+        .filter((e) => e.amountGrossILS != null && Number.isFinite(e.amountGrossILS) && e.amountGrossILS !== 0)
+        .map((e) => ({ id: e.id, name: e.name, amountAgorot: toAgorot(e.amountGrossILS as number) })),
+    };
+
+    // Operations breakdowns (names)
+    const activeStatuses = new Set([
+      CLICKUP_STATUS.booked.toLowerCase(),
+      CLICKUP_STATUS.staffing.toLowerCase(),
+      CLICKUP_STATUS.logistics.toLowerCase(),
+      CLICKUP_STATUS.ready.toLowerCase(),
+    ]);
+
+    const nowMs = computedAt.getTime();
+    const activeCustomersItems = eventTasks
+      .map((t) => {
+        const requestedDateMs = parseNumberLoose(findCustomField(t, (f) => f.id === CLICKUP.fields.requestedDate)?.value);
+        const dateIso = requestedDateMs != null ? new Date(requestedDateMs).toISOString().slice(0, 10) : undefined;
+        return {
+          id: t.id,
+          name: t.name ?? '(untitled)',
+          status: t.status?.status ?? null,
+          requestedDateMs,
+          dateIso,
+        };
+      })
+      .filter((t) => {
+        const status = t.status?.toLowerCase() ?? null;
+        if (!status || !activeStatuses.has(status)) return false;
+        if (t.requestedDateMs == null) return false;
+        return t.requestedDateMs >= nowMs;
+      })
+      .map((t) => ({ id: t.id, name: t.name, status: t.status, dateIso: t.dateIso }));
+
+    const cancellationsItems = eventTasks
+      .map((t) => ({
+        id: t.id,
+        name: t.name ?? '(untitled)',
+        status: t.status?.status ?? null,
+        updatedMs: parseTaskMs(t.date_updated),
+      }))
+      .filter((t) => ciEquals(t.status, CLICKUP_STATUS.cancelled) && t.updatedMs != null && isWithinMonth(t.updatedMs, range))
+      .map((t) => ({ id: t.id, name: t.name, status: t.status }));
+
+    const referralsItems = leads
+      .filter((l) => l.createdMs != null && isWithinMonth(l.createdMs, range))
+      .filter((l) => ciEquals(l.source, CLICKUP_SOURCE.wordOfMouth))
+      .map((l) => ({ id: l.id, name: l.name }));
+
+    const getCloseMs = (lead: { closedMs: number | null; updatedMs: number | null }) => lead.closedMs ?? lead.updatedMs ?? null;
+    const historicalClosedWonPhones = new Set<string>();
+    for (const lead of leads) {
+      if (!ciEquals(lead.status, CLICKUP_STATUS.closedWon)) continue;
+      const closeMs = getCloseMs(lead);
+      if (closeMs == null || closeMs >= range.startMs) continue;
+      if (lead.phoneNormalized) historicalClosedWonPhones.add(lead.phoneNormalized);
+    }
+
+    const returningByPhone = new Map<string, { id: string; name: string }>();
+    for (const lead of leads) {
+      if (lead.createdMs == null || !isWithinMonth(lead.createdMs, range)) continue;
+      if (!lead.phoneNormalized) continue;
+      if (!historicalClosedWonPhones.has(lead.phoneNormalized)) continue;
+      if (!returningByPhone.has(lead.phoneNormalized)) returningByPhone.set(lead.phoneNormalized, { id: lead.id, name: lead.name });
+    }
+
+    breakdowns.activeCustomers = { schemaVersion: 1, metricKey: 'activeCustomers', kind: 'names', generatedAt: computedAtIso, items: activeCustomersItems };
+    breakdowns.cancellations = { schemaVersion: 1, metricKey: 'cancellations', kind: 'names', generatedAt: computedAtIso, items: cancellationsItems };
+    breakdowns.referralsWordOfMouth = {
+      schemaVersion: 1,
+      metricKey: 'referralsWordOfMouth',
+      kind: 'names',
+      generatedAt: computedAtIso,
+      items: referralsItems,
+    };
+    breakdowns.returningCustomers = {
+      schemaVersion: 1,
+      metricKey: 'returningCustomers',
+      kind: 'names',
+      generatedAt: computedAtIso,
+      items: Array.from(returningByPhone.values()).map((v) => ({ id: v.id, name: v.name })),
+    };
+
+    // Sales breakdowns
+    const closedWonLeadItems = leads
+      .filter((l) => ciEquals(l.status, CLICKUP_STATUS.closedWon))
+      .filter((l) => {
+        const closeMs = getCloseMs(l);
+        return closeMs != null && isWithinMonth(closeMs, range);
+      })
+      .map((l) => ({ id: l.id, name: l.name }));
+
+    const closedWonEventItems = closedWonEventsInMonth.map((e) => ({ id: e.id, name: e.name }));
+    const closuresById = new Map<string, { id?: string; name: string }>();
+    for (const it of [...closedWonLeadItems, ...closedWonEventItems]) {
+      const id = it.id ?? `${it.name}`;
+      if (!closuresById.has(id)) closuresById.set(id, it);
+    }
+
+    breakdowns.closures = {
+      schemaVersion: 1,
+      metricKey: 'closures',
+      kind: 'names',
+      generatedAt: computedAtIso,
+      items: Array.from(closuresById.values()),
+    };
+
+    // Avg revenue / deal (gross): prefer line-items when computed from closed-won event budgets.
+    if (closedWonEventsInMonth.length) {
+      breakdowns.avgRevenuePerDealGross = {
+        schemaVersion: 1,
+        metricKey: 'avgRevenuePerDealGross',
+        kind: 'line_items',
+        currency: 'ILS',
+        generatedAt: computedAtIso,
+        items: closedWonEventsInMonth.map((e) => ({ id: e.id, name: e.name, amountAgorot: toAgorot(e.budgetGrossILS) })),
+      };
+    } else {
+      breakdowns.avgRevenuePerDealGross = {
+        schemaVersion: 1,
+        metricKey: 'avgRevenuePerDealGross',
+        kind: 'names',
+        generatedAt: computedAtIso,
+        items: Array.from(closuresById.values()),
+      };
+    }
+  }
+
+  return { metrics, breakdowns };
+}
+
+export async function computeDashboard(month: YYYYMM, deps: ComputeDashboardDeps): Promise<DashboardMetrics> {
+  const { metrics } = await computeDashboardInternal(month, deps, { includeBreakdowns: false });
+  return metrics;
+}
+
+export async function computeDashboardWithBreakdowns(month: YYYYMM, deps: ComputeDashboardDeps): Promise<DashboardArtifacts> {
+  return computeDashboardInternal(month, deps, { includeBreakdowns: true });
 }

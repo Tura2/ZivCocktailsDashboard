@@ -3,7 +3,7 @@
 **Goal:** A clean Salaries module that:
 
 - Fetches employees from ClickUp **Staff Directory**
-- Computes monthly **events per employee** from ClickUp **Event Calendar** (status = `done` only)
+- Computes monthly **events per employee** from ClickUp **Event Calendar** (status = `done` or `billing`)
 - Lets the user edit & save payroll inputs (`baseRate`, `videoRate`, `bonus`)
 - Persists per-employee defaults + per-month payment snapshots to Firestore
 
@@ -26,7 +26,7 @@ Locked identifiers (from [docs/EMPLOYER_EVENTS_CALC.md](../EMPLOYER_EVENTS_CALC.
 
 For each Event Calendar task:
 
-1. Status filter: count only tasks where `task.status.status` equals `done` (case-insensitive)
+1. Status filter: count only tasks where `task.status.status` equals `done` or `billing` (case-insensitive)
 1. Relationship filter: read the Assigned Staff custom field and extract linked staff task IDs
 1. Date filter: read Requested Date (ms); if missing, skip the event
 1. Recommendation flag: read the Recommendation checkbox and store per event as `recommendation: true/false/null`

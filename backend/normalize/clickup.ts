@@ -73,6 +73,7 @@ function parseTaskMs(raw: string | null | undefined): number | null {
 
 export interface NormalizedLead {
   id: string;
+  name: string;
   status: string | null;
   createdMs: number | null;
   updatedMs: number | null;
@@ -98,6 +99,7 @@ export interface NormalizedEvent {
 
 export interface NormalizedExpense {
   id: string;
+  name: string;
   expenseDateMs: number | null;
   amountGrossILS: number | null; // single field treated as gross
 }
@@ -105,6 +107,7 @@ export interface NormalizedExpense {
 export function normalizeIncomingLead(task: ClickUpTask): NormalizedLead {
   return {
     id: task.id,
+    name: task.name ?? '(untitled)',
     status: task.status?.status ?? null,
     createdMs: parseTaskMs(task.date_created),
     updatedMs: parseTaskMs(task.date_updated),
@@ -134,6 +137,7 @@ export function normalizeEvent(task: ClickUpTask): NormalizedEvent {
 export function normalizeExpense(task: ClickUpTask): NormalizedExpense {
   return {
     id: task.id,
+    name: task.name ?? '(untitled)',
     expenseDateMs: getDateMs(task, CLICKUP.fields.expenseDate),
     amountGrossILS: getNumber(task, CLICKUP.fields.expenseAmount),
   };

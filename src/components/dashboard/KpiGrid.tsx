@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react';
 
-import KpiCard, { type TrendDirection } from '@/components/dashboard/KpiCard';
+import MetricCard, { type TrendDirection } from '@/components/dashboard/MetricCard';
 import type { CategoryKey } from '@/ui/categoryTheme';
 
 type KpiItem = {
@@ -16,6 +16,8 @@ type KpiItem = {
 type KpiGridProps = {
   items?: KpiItem[];
   children?: ReactNode;
+  snapshotId?: string | null;
+  snapshotVersion?: string | null;
   className?: string;
 };
 
@@ -23,13 +25,16 @@ type KpiGridProps = {
 // Pages that have wider surfaces can opt into more columns via `className`.
 const defaultGridClasses = 'grid grid-cols-1 gap-4 sm:grid-cols-2';
 
-export default function KpiGrid({ items, children, className = '' }: KpiGridProps) {
+export default function KpiGrid({ items, children, snapshotId = null, snapshotVersion = null, className = '' }: KpiGridProps) {
   return (
     <div className={`${defaultGridClasses} ${className}`.trim()}>
       {items
         ? items.map((item) => (
-            <KpiCard
+            <MetricCard
               key={item.key ?? item.label}
+              snapshotId={snapshotId}
+              snapshotVersion={snapshotVersion}
+              metricKey={item.key ?? null}
               label={item.label}
               value={item.value}
               trendLabel={item.trendLabel}

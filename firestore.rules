@@ -27,6 +27,12 @@ service cloud.firestore {
       allow write: if false;
     }
 
+    // Breakdown docs stored under each snapshot
+    match /snapshots/{docId}/metricBreakdowns/{metricKey} {
+      allow read: if isAllowed();
+      allow write: if false;
+    }
+
     match /jobs/{docId} {
       allow read: if isAllowed();
       allow write: if false;

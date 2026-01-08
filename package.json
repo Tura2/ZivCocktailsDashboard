@@ -1,7 +1,7 @@
 {
   "name": "ziv-cocktails-dashboard",
   "private": true,
-  "version": "1.0.1",
+  "version": "1.0.3",
   "type": "commonjs",
   "author": "Offir Tura",
   "main": "dist/electron/main.js",
@@ -31,8 +31,9 @@
     "lint": "echo 'lint not configured'"
   },
   "dependencies": {
+    "@radix-ui/react-hover-card": "^1.1.15",
     "firebase": "^12.7.0",
-    "jspdf": "^3.0.4",
+    "jspdf": "^4.0.0",
     "lucide-react": "^0.562.0",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",

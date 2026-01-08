@@ -248,7 +248,17 @@ function buildKpis(snapshot: SnapshotDoc) {
   };
 }
 
-function CategorySection({ category, items }: { category: CategoryKey; items: Parameters<typeof KpiGrid>[0]['items'] }) {
+function CategorySection({
+  category,
+  items,
+  snapshotId,
+  snapshotVersion,
+}: {
+  category: CategoryKey;
+  items: Parameters<typeof KpiGrid>[0]['items'];
+  snapshotId: string;
+  snapshotVersion: string;
+}) {
   const t = getCategoryTheme(category);
 
   return (
@@ -259,7 +269,12 @@ function CategorySection({ category, items }: { category: CategoryKey; items: Pa
           <h3 className={['text-sm font-semibold uppercase tracking-wide', t.accentText].join(' ')}>{t.label}</h3>
         </div>
       </div>
-      <KpiGrid items={items?.map((item) => ({ ...item, hideTrend: true }))} className="xl:grid-cols-4" />
+      <KpiGrid
+        items={items?.map((item) => ({ ...item, hideTrend: true }))}
+        snapshotId={snapshotId}
+        snapshotVersion={snapshotVersion}
+        className="xl:grid-cols-4"
+      />
     </section>
   );
 }
@@ -718,10 +733,10 @@ export function HistoryPage() {
                       </div>
                     </div>
 
-                    <CategorySection category="financial" items={kpis.financial} />
-                    <CategorySection category="marketing" items={kpis.marketing} />
-                    <CategorySection category="sales" items={kpis.sales} />
-                    <CategorySection category="operations" items={kpis.operations} />
+                    <CategorySection category="financial" items={kpis.financial} snapshotId={snap.month} snapshotVersion={snap.computedAt} />
+                    <CategorySection category="marketing" items={kpis.marketing} snapshotId={snap.month} snapshotVersion={snap.computedAt} />
+                    <CategorySection category="sales" items={kpis.sales} snapshotId={snap.month} snapshotVersion={snap.computedAt} />
+                    <CategorySection category="operations" items={kpis.operations} snapshotId={snap.month} snapshotVersion={snap.computedAt} />
                   </div>
                 ) : null}
               </Card>

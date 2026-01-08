@@ -44,6 +44,11 @@ This repository uses a small set of Markdown docs as the “source of truth” f
 - F2 snapshot engine (engine-only; persistence happens in F3): [stages/F2_SNAPSHOT_ENGINE.md](stages/F2_SNAPSHOT_ENGINE.md)
 - F3 persistence layer (Firestore writes via Functions): [stages/F3_FIRESTORE_PERSISTENCE.md](stages/F3_FIRESTORE_PERSISTENCE.md)
 - F9 payroll & salaries (ClickUp staff + monthly payments): [stages/F9_PAYROLL_AND_SALARIES.md](stages/F9_PAYROLL_AND_SALARIES.md)
+- F10 calculation transparency + refresh UX: [stages/F10_CALCULATION_BREAKDOWNS_AND_REFRESH_UX.md](stages/F10_CALCULATION_BREAKDOWNS_AND_REFRESH_UX.md)
+
+## Operational notes
+
+- Refresh flow + performance notes: [REFRESH_FLOW_AND_PERFORMANCE.md](REFRESH_FLOW_AND_PERFORMANCE.md)
 
 ## Ground rules (quick)
 
